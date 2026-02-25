@@ -1,0 +1,89 @@
+:root {
+  color-scheme: light;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f4f6fa;
+  color: #1f2937;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #1d4ed8;
+  color: #fff;
+}
+
+h1, h2 {
+  margin: 0;
+}
+
+main {
+  padding: 16px 20px;
+}
+
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}
+
+.inline-form {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+  flex-wrap: wrap;
+}
+
+input, select, button {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+}
+
+button {
+  cursor: pointer;
+  background: #111827;
+  color: white;
+}
+
+button:hover {
+  background: #374151;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th, td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background: #e5edff;
+}
+
+.total-label {
+  text-align: right;
+  font-weight: bold;
+}
+
+.small-input {
+  width: 90px;
+}
+
+.hint {
+  color: #4b5563;
+}

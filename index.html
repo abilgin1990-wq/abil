@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teklif Hazırlama Programı</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Teklif Hazırlama Programı</h1>
+      <div class="header-actions">
+        <button id="saveBtn">Kaydet</button>
+        <button id="mainMenuBtn">Ana Form</button>
+        <button id="managementBtn">Malzeme Yönetimi</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="mainView" class="view active">
+        <h2>Ana Form (Tesisat Grupları)</h2>
+        <div class="inline-form">
+          <input id="groupNameInput" type="text" placeholder="Yeni Tesisat Grubu (örn. Sıhhi Tesisat)" />
+          <button id="addGroupBtn">Tesisat Grubu Ekle</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Tesisat Grubu</th>
+              <th>Tutar</th>
+              <th>Detay</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="groupsTableBody"></tbody>
+        </table>
+      </section>
+
+      <section id="groupView" class="view">
+        <h2 id="groupTitle">Tesisat Grubu</h2>
+        <div class="inline-form">
+          <input id="detailNameInput" type="text" placeholder="Yeni İş Detayı (örn. Vitrifiye)" />
+          <button id="addDetailBtn">İş Detayı Ekle</button>
+          <button id="backToMainBtn">Geri</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>İş Detayı</th>
+              <th>Toplam Tutar</th>
+              <th>Detay</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="detailsTableBody"></tbody>
+        </table>
+      </section>
+
+      <section id="detailView" class="view">
+        <h2 id="detailTitle">İş Detayı</h2>
+        <div class="inline-form">
+          <button id="addLineBtn">Malzeme/Marka Ekle</button>
+          <button id="backToGroupBtn">Geri</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Malzeme</th>
+              <th>Marka</th>
+              <th>Adet</th>
+              <th>Liste Fiyatı</th>
+              <th>İskonto %</th>
+              <th>Birim Fiyat</th>
+              <th>İşçilik Birim</th>
+              <th>İşçilik Toplam</th>
+              <th>Malzeme Toplam</th>
+              <th>Satır Toplam</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="linesTableBody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="9" class="total-label">Genel Toplam</td>
+              <td id="detailGrandTotal">0,00 TL</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+
+      <section id="managementView" class="view">
+        <h2>Malzeme Yönetimi (Tüm Gruplar)</h2>
+        <p class="hint">Tek bir sayfadan tüm tesisat gruplarının iş detaylarına malzeme/marka ekleyebilir, düzenleyebilir veya silebilirsiniz.</p>
+        <div class="inline-form">
+          <select id="manageGroupSelect"></select>
+          <select id="manageDetailSelect"></select>
+          <button id="manageAddLineBtn">Seçili İş Detayına Malzeme/Marka Ekle</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Tesisat Grubu</th>
+              <th>İş Detayı</th>
+              <th>Malzeme</th>
+              <th>Marka</th>
+              <th>Liste Fiyatı</th>
+              <th>İskonto %</th>
+              <th>İşçilik Birim</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="managementTableBody"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
