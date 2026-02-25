@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teklif Hazırlama</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Teklif Hazırlama Programı</h1>
+      <nav>
+        <button id="navMain">Ana Form</button>
+        <button id="navMaterials">Malzeme Yönetimi</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="mainView" class="view active"></section>
+      <section id="groupView" class="view"></section>
+      <section id="detailView" class="view"></section>
+      <section id="materialsView" class="view"></section>
+    </main>
+
+    <template id="cardTemplate">
+      <div class="card"></div>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
