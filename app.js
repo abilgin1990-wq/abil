@@ -59,8 +59,9 @@ function getDetailTotal(detailId) {
     const catalog = state.materialCatalog.find((m) => m.id === line.catalogMaterialId);
     if (!catalog) return sum;
     const unitMaterial = calcMaterialUnitPrice(catalog);
+    const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
     const materialTotal = unitMaterial * line.quantity;
-    const laborTotal = line.laborUnitPrice * line.quantity;
+    const laborTotal = laborUnitPrice * line.quantity;
     return sum + materialTotal + laborTotal;
   }, 0);
 }
@@ -297,8 +298,9 @@ function showDetailView() {
       const catalog = state.materialCatalog.find((m) => m.id === line.catalogMaterialId);
       if (!catalog) return '';
       const unit = calcMaterialUnitPrice(catalog);
+      const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
       const materialTotal = line.quantity * unit;
-      const laborTotal = line.quantity * line.laborUnitPrice;
+      const laborTotal = line.quantity * laborUnitPrice;
       return `
       <tr>
         <td>${catalog.name}</td>
@@ -307,7 +309,7 @@ function showDetailView() {
         <td class="right">${formatMoney(catalog.listPrice)}</td>
         <td class="right">%${catalog.discount}</td>
         <td class="right">${formatMoney(unit)}</td>
-        <td class="right">${formatMoney(line.laborUnitPrice)}</td>
+        <td class="right">${formatMoney(laborUnitPrice)}</td>
         <td class="right">${formatMoney(materialTotal)}</td>
         <td class="right">${formatMoney(laborTotal)}</td>
         <td class="right">${formatMoney(materialTotal + laborTotal)}</td>
@@ -335,9 +337,6 @@ function showDetailView() {
         </label>
         <label>Adet
           <input type="number" step="1" min="1" name="quantity" required value="1" />
-        </label>
-        <label>İşçilik Birim Fiyatı
-          <input type="number" step="0.01" min="0" name="laborUnitPrice" required value="0" />
         </label>
         <label style="align-self:end;">
           <button class="primary" type="submit">Satır Ekle</button>
@@ -371,7 +370,6 @@ function showDetailView() {
       id: uid('line'),
       catalogMaterialId: String(fd.get('catalogMaterialId')),
       quantity: Number(fd.get('quantity')),
-      laborUnitPrice: Number(fd.get('laborUnitPrice')),
     };
     if (!state.lineItemsByDetail[detail.id]) state.lineItemsByDetail[detail.id] = [];
     state.lineItemsByDetail[detail.id].push(line);
@@ -409,8 +407,14 @@ function showMaterialsView() {
           <td>${m.brand}</td>
           <td class="right">${formatMoney(m.listPrice)}</td>
           <td class="right">%${m.discount}</td>
+          <td class="right">${formatMoney(m.laborUnitPrice || 0)}</td>
           <td class="right">${formatMoney(calcMaterialUnitPrice(m))}</td>
-          <td><button class="danger" data-delete-material="${m.id}">Sil</button></td>
+          <td>
+            <div class="actions">
+              <button data-edit-material="${m.id}">Düzenle</button>
+              <button class="danger" data-delete-material="${m.id}">Sil</button>
+            </div>
+          </td>
         </tr>`;
       },
     )
@@ -444,6 +448,9 @@ function showMaterialsView() {
         <label>İskonto (%)
           <input type="number" step="0.01" min="0" max="100" name="discount" required value="0" />
         </label>
+        <label>İşçilik Fiyatı
+          <input type="number" step="0.01" min="0" name="laborUnitPrice" required value="0" />
+        </label>
         <label style="align-self:end;">
           <button class="primary" type="submit">Ekle</button>
         </label>
@@ -455,11 +462,11 @@ function showMaterialsView() {
       <table>
         <thead>
           <tr>
-            <th>Tesisat Grubu</th><th>İş Detayı</th><th>Malzeme</th><th>Marka</th><th class="right">Liste Fiyatı</th><th class="right">İskonto</th><th class="right">Birim Fiyat</th><th>İşlem</th>
+            <th>Tesisat Grubu</th><th>İş Detayı</th><th>Malzeme</th><th>Marka</th><th class="right">Liste Fiyatı</th><th class="right">İskonto</th><th class="right">İşçilik Fiyatı</th><th class="right">Birim Fiyat</th><th>İşlem</th>
           </tr>
         </thead>
         <tbody>
-          ${allRows || '<tr><td colspan="8">Kayıt yok.</td></tr>'}
+          ${allRows || '<tr><td colspan="9">Kayıt yok.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -502,6 +509,7 @@ function showMaterialsView() {
       brand,
       listPrice: Number(fd.get('listPrice')),
       discount: Number(fd.get('discount')),
+      laborUnitPrice: Number(fd.get('laborUnitPrice')),
     });
 
     saveState();
@@ -518,6 +526,48 @@ function showMaterialsView() {
           (line) => line.catalogMaterialId !== materialId,
         );
       });
+      saveState();
+      showMaterialsView();
+    });
+  });
+
+  views.materials.querySelectorAll('[data-edit-material]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const material = state.materialCatalog.find((m) => m.id === btn.dataset.editMaterial);
+      if (!material) return;
+
+      const name = prompt('Malzeme adı', material.name);
+      if (name === null) return;
+      const brand = prompt('Marka', material.brand);
+      if (brand === null) return;
+      const listPrice = prompt('Liste fiyatı', String(material.listPrice));
+      if (listPrice === null) return;
+      const discount = prompt('İskonto (%)', String(material.discount));
+      if (discount === null) return;
+      const laborUnitPrice = prompt('İşçilik fiyatı', String(material.laborUnitPrice || 0));
+      if (laborUnitPrice === null) return;
+
+      const normalizedName = name.trim();
+      const normalizedBrand = brand.trim();
+
+      const duplicate = state.materialCatalog.some(
+        (m) =>
+          m.id !== material.id &&
+          m.name.toLowerCase() === normalizedName.toLowerCase() &&
+          m.brand.toLowerCase() === normalizedBrand.toLowerCase(),
+      );
+
+      if (duplicate) {
+        alert('Aynı malzeme adı ve marka ile ikinci bir kayıt eklenemez.');
+        return;
+      }
+
+      material.name = normalizedName || material.name;
+      material.brand = normalizedBrand || material.brand;
+      material.listPrice = Number(listPrice);
+      material.discount = Number(discount);
+      material.laborUnitPrice = Number(laborUnitPrice);
+
       saveState();
       showMaterialsView();
     });
