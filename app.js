@@ -432,30 +432,6 @@ function showMaterialsView() {
   const groupOptions = state.plumbingGroups
     .map((g) => `<option value="${g.id}">${g.name}</option>`)
     .join('');
-  const allRows = state.materialCatalog
-    .map(
-      (m) => {
-        const grp = state.plumbingGroups.find((g) => g.id === m.groupId);
-        const det = state.jobDetails.find((d) => d.id === m.jobDetailId);
-        return `<tr>
-          <td>${grp?.name || '-'}</td>
-          <td>${det?.name || '-'}</td>
-          <td>${m.name}</td>
-          <td>${m.brand}</td>
-          <td class="right">${formatMoney(m.listPrice)}</td>
-          <td class="right">%${m.discount}</td>
-          <td class="right">${formatMoney(m.laborUnitPrice || 0)}</td>
-          <td class="right">${formatMoney(calcMaterialUnitPrice(m))}</td>
-          <td>
-            <div class="actions">
-              <button data-edit-material="${m.id}">Düzenle</button>
-              <button class="danger" data-delete-material="${m.id}">Sil</button>
-            </div>
-          </td>
-        </tr>`;
-      },
-    )
-    .join('');
 
   views.materials.innerHTML = `
     <div class="card">
@@ -474,7 +450,7 @@ function showMaterialsView() {
           </select>
         </label>
         <label>Malzeme Adı
-          <input name="name" required placeholder="Örn. Lavabo" />
+          <input id="materialNameInput" name="name" required placeholder="Örn. Lavabo" />
         </label>
         <label>Marka
           <input name="brand" required placeholder="Örn. ECA" />
@@ -502,15 +478,15 @@ function showMaterialsView() {
             <th>Tesisat Grubu</th><th>İş Detayı</th><th>Malzeme</th><th>Marka</th><th class="right">Liste Fiyatı</th><th class="right">İskonto</th><th class="right">İşçilik Fiyatı</th><th class="right">Birim Fiyat</th><th>İşlem</th>
           </tr>
         </thead>
-        <tbody>
-          ${allRows || '<tr><td colspan="9">Kayıt yok.</td></tr>'}
-        </tbody>
+        <tbody id="materialsTableBody"></tbody>
       </table>
     </div>
   `;
 
   const groupSelect = document.getElementById('materialGroupSelect');
   const detailSelect = document.getElementById('materialDetailSelect');
+  const materialNameInput = document.getElementById('materialNameInput');
+  const tableBody = document.getElementById('materialsTableBody');
 
   const fillDetails = () => {
     const details = state.jobDetails.filter((d) => d.groupId === groupSelect.value);
@@ -519,7 +495,112 @@ function showMaterialsView() {
       ${details.map((d) => `<option value="${d.id}">${d.name}</option>`).join('')}
     `;
   };
-  groupSelect.addEventListener('change', fillDetails);
+
+  const getFilteredMaterials = () => {
+    const selectedGroupId = groupSelect.value;
+    const selectedDetailId = detailSelect.value;
+    const nameQuery = materialNameInput.value.trim().toLowerCase();
+
+    return state.materialCatalog.filter((m) => {
+      const groupMatch = !selectedGroupId || m.groupId === selectedGroupId;
+      const detailMatch = !selectedDetailId || m.jobDetailId === selectedDetailId;
+      const nameMatch = !nameQuery || m.name.toLowerCase().includes(nameQuery);
+      return groupMatch && detailMatch && nameMatch;
+    });
+  };
+
+  const renderMaterialsTable = () => {
+    const filtered = getFilteredMaterials();
+
+    const rows = filtered
+      .map((m) => {
+        const grp = state.plumbingGroups.find((g) => g.id === m.groupId);
+        const det = state.jobDetails.find((d) => d.id === m.jobDetailId);
+        return `<tr>
+          <td>${grp?.name || '-'}</td>
+          <td>${det?.name || '-'}</td>
+          <td>${m.name}</td>
+          <td>${m.brand}</td>
+          <td class="right">${formatMoney(m.listPrice)}</td>
+          <td class="right">%${m.discount}</td>
+          <td class="right">${formatMoney(m.laborUnitPrice || 0)}</td>
+          <td class="right">${formatMoney(calcMaterialUnitPrice(m))}</td>
+          <td>
+            <div class="actions">
+              <button data-edit-material="${m.id}">Düzenle</button>
+              <button class="danger" data-delete-material="${m.id}">Sil</button>
+            </div>
+          </td>
+        </tr>`;
+      })
+      .join('');
+
+    tableBody.innerHTML = rows || '<tr><td colspan="9">Kayıt yok.</td></tr>';
+
+    views.materials.querySelectorAll('[data-delete-material]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!confirm('Silmek istiyor musunuz?')) return;
+        const materialId = btn.dataset.deleteMaterial;
+        state.materialCatalog = state.materialCatalog.filter((m) => m.id !== materialId);
+        Object.keys(state.lineItemsByDetail).forEach((detailId) => {
+          state.lineItemsByDetail[detailId] = state.lineItemsByDetail[detailId].filter(
+            (line) => line.catalogMaterialId !== materialId,
+          );
+        });
+        saveState();
+        renderMaterialsTable();
+      });
+    });
+
+    views.materials.querySelectorAll('[data-edit-material]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const material = state.materialCatalog.find((m) => m.id === btn.dataset.editMaterial);
+        if (!material) return;
+
+        const name = prompt('Malzeme adı', material.name);
+        if (name === null) return;
+        const brand = prompt('Marka', material.brand);
+        if (brand === null) return;
+        const listPrice = prompt('Liste fiyatı', String(material.listPrice));
+        if (listPrice === null) return;
+        const discount = prompt('İskonto (%)', String(material.discount));
+        if (discount === null) return;
+        const laborUnitPrice = prompt('İşçilik fiyatı', String(material.laborUnitPrice || 0));
+        if (laborUnitPrice === null) return;
+
+        const normalizedName = name.trim();
+        const normalizedBrand = brand.trim();
+
+        const duplicate = state.materialCatalog.some(
+          (m) =>
+            m.id !== material.id &&
+            m.name.toLowerCase() === normalizedName.toLowerCase() &&
+            m.brand.toLowerCase() === normalizedBrand.toLowerCase(),
+        );
+
+        if (duplicate) {
+          alert('Aynı malzeme adı ve marka ile ikinci bir kayıt eklenemez.');
+          return;
+        }
+
+        material.name = normalizedName || material.name;
+        material.brand = normalizedBrand || material.brand;
+        material.listPrice = Number(listPrice);
+        material.discount = Number(discount);
+        material.laborUnitPrice = Number(laborUnitPrice);
+
+        saveState();
+        renderMaterialsTable();
+      });
+    });
+  };
+
+  groupSelect.addEventListener('change', () => {
+    fillDetails();
+    renderMaterialsTable();
+  });
+  detailSelect.addEventListener('change', renderMaterialsTable);
+  materialNameInput.addEventListener('input', renderMaterialsTable);
 
   document.getElementById('materialForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -553,60 +634,6 @@ function showMaterialsView() {
     showMaterialsView();
   });
 
-  views.materials.querySelectorAll('[data-delete-material]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (!confirm('Silmek istiyor musunuz?')) return;
-      const materialId = btn.dataset.deleteMaterial;
-      state.materialCatalog = state.materialCatalog.filter((m) => m.id !== materialId);
-      Object.keys(state.lineItemsByDetail).forEach((detailId) => {
-        state.lineItemsByDetail[detailId] = state.lineItemsByDetail[detailId].filter(
-          (line) => line.catalogMaterialId !== materialId,
-        );
-      });
-      saveState();
-      showMaterialsView();
-    });
-  });
-
-  views.materials.querySelectorAll('[data-edit-material]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const material = state.materialCatalog.find((m) => m.id === btn.dataset.editMaterial);
-      if (!material) return;
-
-      const name = prompt('Malzeme adı', material.name);
-      if (name === null) return;
-      const brand = prompt('Marka', material.brand);
-      if (brand === null) return;
-      const listPrice = prompt('Liste fiyatı', String(material.listPrice));
-      if (listPrice === null) return;
-      const discount = prompt('İskonto (%)', String(material.discount));
-      if (discount === null) return;
-      const laborUnitPrice = prompt('İşçilik fiyatı', String(material.laborUnitPrice || 0));
-      if (laborUnitPrice === null) return;
-
-      const normalizedName = name.trim();
-      const normalizedBrand = brand.trim();
-
-      const duplicate = state.materialCatalog.some(
-        (m) =>
-          m.id !== material.id &&
-          m.name.toLowerCase() === normalizedName.toLowerCase() &&
-          m.brand.toLowerCase() === normalizedBrand.toLowerCase(),
-      );
-
-      if (duplicate) {
-        alert('Aynı malzeme adı ve marka ile ikinci bir kayıt eklenemez.');
-        return;
-      }
-
-      material.name = normalizedName || material.name;
-      material.brand = normalizedBrand || material.brand;
-      material.listPrice = Number(listPrice);
-      material.discount = Number(discount);
-      material.laborUnitPrice = Number(laborUnitPrice);
-
-      saveState();
-      showMaterialsView();
-    });
-  });
+  fillDetails();
+  renderMaterialsTable();
 }
