@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teklif Programı</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>Teklif Programı</h1>
+      <button data-nav="home" class="nav-btn active">Ana Sayfa</button>
+      <button data-nav="settings" class="nav-btn">Ayarlar</button>
+      <button id="resetDemo" class="nav-btn warning">Örnek Veri Yükle</button>
+    </aside>
+    <main id="app" class="content"></main>
+  </div>
+
+  <template id="emptyState">
+    <div class="empty">Henüz kayıt yok.</div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
