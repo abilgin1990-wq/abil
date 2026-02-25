@@ -1,7 +1,8 @@
-const STORAGE_KEY = 'teklif_hazirlama_v1';
+const STORAGE_KEY = 'teklif_hazirlama_v2';
 
 const state = {
   groups: [],
+  materialCatalog: [],
   currentGroupId: null,
   currentDetailId: null,
 };
@@ -25,6 +26,16 @@ const el = {
   detailNameInput: document.getElementById('detailNameInput'),
   manageGroupSelect: document.getElementById('manageGroupSelect'),
   manageDetailSelect: document.getElementById('manageDetailSelect'),
+  manageCatalogSelect: document.getElementById('manageCatalogSelect'),
+  detailCatalogSelect: document.getElementById('detailCatalogSelect'),
+  catalogGroupSelect: document.getElementById('catalogGroupSelect'),
+  catalogDetailSelect: document.getElementById('catalogDetailSelect'),
+  catalogMaterialInput: document.getElementById('catalogMaterialInput'),
+  catalogBrandInput: document.getElementById('catalogBrandInput'),
+  catalogListPriceInput: document.getElementById('catalogListPriceInput'),
+  catalogDiscountInput: document.getElementById('catalogDiscountInput'),
+  catalogLaborInput: document.getElementById('catalogLaborInput'),
+  catalogTableBody: document.getElementById('catalogTableBody'),
 };
 
 function generateId() {
@@ -41,6 +52,14 @@ function getGroupById(groupId) {
 
 function getDetailById(group, detailId) {
   return group.details.find((d) => d.id === detailId);
+}
+
+function getCatalogById(catalogId) {
+  return state.materialCatalog.find((item) => item.id === catalogId);
+}
+
+function getCatalogForDetail(groupId, detailId) {
+  return state.materialCatalog.filter((item) => item.groupId === groupId && item.detailId === detailId);
 }
 
 function computeLine(line) {
@@ -77,16 +96,15 @@ function loadData() {
   if (!raw) return;
   try {
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed.groups)) {
-      state.groups = parsed.groups;
-    }
+    if (Array.isArray(parsed.groups)) state.groups = parsed.groups;
+    if (Array.isArray(parsed.materialCatalog)) state.materialCatalog = parsed.materialCatalog;
   } catch (error) {
     alert('Kaydedilmiş veri okunamadı, boş veri ile devam ediliyor.');
   }
 }
 
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ groups: state.groups }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ groups: state.groups, materialCatalog: state.materialCatalog }));
   alert('Kayıt başarılı.');
 }
 
@@ -104,6 +122,32 @@ function renderMain() {
       </td>
     `;
     el.groupsTableBody.appendChild(tr);
+  });
+
+  renderCatalogPanel();
+}
+
+function renderCatalogPanel() {
+  fillCatalogSelectors();
+  el.catalogTableBody.innerHTML = '';
+  state.materialCatalog.forEach((item) => {
+    const group = getGroupById(item.groupId);
+    const detail = group ? getDetailById(group, item.detailId) : null;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${group ? group.name : '-'}</td>
+      <td>${detail ? detail.name : '-'}</td>
+      <td>${item.material}</td>
+      <td>${item.brand}</td>
+      <td>${formatTL(item.listPrice)}</td>
+      <td>${item.discount}</td>
+      <td>${formatTL(item.laborUnitPrice)}</td>
+      <td>
+        <button data-action="edit-catalog" data-id="${item.id}">Düzenle</button>
+        <button data-action="delete-catalog" data-id="${item.id}">Sil</button>
+      </td>
+    `;
+    el.catalogTableBody.appendChild(tr);
   });
 }
 
@@ -127,6 +171,22 @@ function renderGroup() {
   });
 }
 
+function fillDetailCatalogSelect() {
+  const group = getGroupById(state.currentGroupId);
+  if (!group) return;
+  const detail = getDetailById(group, state.currentDetailId);
+  if (!detail) return;
+
+  el.detailCatalogSelect.innerHTML = '';
+  const options = getCatalogForDetail(group.id, detail.id);
+  options.forEach((item) => {
+    const opt = document.createElement('option');
+    opt.value = item.id;
+    opt.textContent = `${item.material} / ${item.brand} (${formatTL(item.listPrice)})`;
+    el.detailCatalogSelect.appendChild(opt);
+  });
+}
+
 function renderDetail() {
   const group = getGroupById(state.currentGroupId);
   if (!group) return;
@@ -134,6 +194,7 @@ function renderDetail() {
   if (!detail) return;
 
   el.detailTitle.textContent = `İş Detayı: ${detail.name} (${group.name})`;
+  fillDetailCatalogSelect();
   el.linesTableBody.innerHTML = '';
 
   detail.lines.forEach((line) => {
@@ -150,10 +211,7 @@ function renderDetail() {
       <td>${formatTL(c.iscilikToplam)}</td>
       <td>${formatTL(c.malzemeToplam)}</td>
       <td>${formatTL(c.satirToplam)}</td>
-      <td>
-        <button data-action="edit-line" data-id="${line.id}">Düzenle</button>
-        <button data-action="delete-line" data-id="${line.id}">Sil</button>
-      </td>
+      <td><button data-action="delete-line" data-id="${line.id}">Sil</button></td>
     `;
     el.linesTableBody.appendChild(tr);
   });
@@ -169,7 +227,6 @@ function fillManagementSelectors() {
     opt.textContent = group.name;
     el.manageGroupSelect.appendChild(opt);
   });
-
   fillManageDetails();
 }
 
@@ -182,6 +239,18 @@ function fillManageDetails() {
     opt.value = detail.id;
     opt.textContent = detail.name;
     el.manageDetailSelect.appendChild(opt);
+  });
+  fillManageCatalog();
+}
+
+function fillManageCatalog() {
+  el.manageCatalogSelect.innerHTML = '';
+  const options = getCatalogForDetail(el.manageGroupSelect.value, el.manageDetailSelect.value);
+  options.forEach((item) => {
+    const opt = document.createElement('option');
+    opt.value = item.id;
+    opt.textContent = `${item.material} / ${item.brand}`;
+    el.manageCatalogSelect.appendChild(opt);
   });
 }
 
@@ -200,7 +269,10 @@ function renderManagement() {
           <td>${formatTL(line.listPrice)}</td>
           <td>${line.discount}</td>
           <td>${formatTL(line.laborUnitPrice)}</td>
-          <td><button data-action="manage-delete-line" data-group-id="${group.id}" data-detail-id="${detail.id}" data-line-id="${line.id}">Sil</button></td>
+          <td>
+            <button data-action="manage-edit-line" data-group-id="${group.id}" data-detail-id="${detail.id}" data-line-id="${line.id}">Düzenle</button>
+            <button data-action="manage-delete-line" data-group-id="${group.id}" data-detail-id="${detail.id}" data-line-id="${line.id}">Sil</button>
+          </td>
         `;
         el.managementTableBody.appendChild(tr);
       });
@@ -208,37 +280,65 @@ function renderManagement() {
   });
 }
 
-function addLineToDetail(detail) {
-  const material = prompt('Malzeme adı (örn. Lavabo):');
-  if (!material) return;
-  const brand = prompt('Marka (örn. ECA):');
-  if (!brand) return;
-  const listPrice = Number(prompt('Liste fiyatı:', '0') || 0);
-  const discount = Number(prompt('İskonto %:', '0') || 0);
-  const laborUnitPrice = Number(prompt('İşçilik birim fiyatı:', '0') || 0);
+function fillCatalogSelectors() {
+  el.catalogGroupSelect.innerHTML = '';
+  state.groups.forEach((group) => {
+    const opt = document.createElement('option');
+    opt.value = group.id;
+    opt.textContent = group.name;
+    el.catalogGroupSelect.appendChild(opt);
+  });
+
+  fillCatalogDetailSelector();
+}
+
+function fillCatalogDetailSelector() {
+  el.catalogDetailSelect.innerHTML = '';
+  const group = getGroupById(el.catalogGroupSelect.value);
+  if (!group) return;
+  group.details.forEach((detail) => {
+    const opt = document.createElement('option');
+    opt.value = detail.id;
+    opt.textContent = detail.name;
+    el.catalogDetailSelect.appendChild(opt);
+  });
+}
+
+function addLineFromCatalog(detail, catalogId) {
+  const catalog = getCatalogById(catalogId);
+  if (!catalog) {
+    alert('Lütfen katalogdan bir malzeme seçin.');
+    return;
+  }
   detail.lines.push({
     id: generateId(),
-    material,
-    brand,
+    material: catalog.material,
+    brand: catalog.brand,
     qty: 1,
-    listPrice,
-    discount,
-    laborUnitPrice,
+    listPrice: Number(catalog.listPrice),
+    discount: Number(catalog.discount),
+    laborUnitPrice: Number(catalog.laborUnitPrice),
   });
 }
 
 function bootstrapSampleIfEmpty() {
   if (state.groups.length > 0) return;
+
+  const groupId = generateId();
+  const detailId = generateId();
+  const catalogId = generateId();
+
   state.groups.push({
-    id: generateId(),
+    id: groupId,
     name: 'Sıhhi Tesisat',
     details: [
       {
-        id: generateId(),
+        id: detailId,
         name: 'Vitrifiye',
         lines: [
           {
             id: generateId(),
+            catalogId,
             material: 'Lavabo',
             brand: 'ECA',
             qty: 1,
@@ -250,6 +350,17 @@ function bootstrapSampleIfEmpty() {
       },
     ],
   });
+
+  state.materialCatalog.push({
+    id: catalogId,
+    groupId,
+    detailId,
+    material: 'Lavabo',
+    brand: 'ECA',
+    listPrice: 2500,
+    discount: 10,
+    laborUnitPrice: 350,
+  });
 }
 
 document.getElementById('addGroupBtn').addEventListener('click', () => {
@@ -258,6 +369,42 @@ document.getElementById('addGroupBtn').addEventListener('click', () => {
   state.groups.push({ id: generateId(), name, details: [] });
   el.groupNameInput.value = '';
   renderMain();
+  renderManagement();
+});
+
+document.getElementById('addCatalogBtn').addEventListener('click', () => {
+  const groupId = el.catalogGroupSelect.value;
+  const detailId = el.catalogDetailSelect.value;
+  const material = el.catalogMaterialInput.value.trim();
+  const brand = el.catalogBrandInput.value.trim();
+  const listPrice = Number(el.catalogListPriceInput.value || 0);
+  const discount = Number(el.catalogDiscountInput.value || 0);
+  const laborUnitPrice = Number(el.catalogLaborInput.value || 0);
+
+  if (!groupId || !detailId || !material || !brand) {
+    alert('Lütfen grup, iş detayı, malzeme ve marka alanlarını doldurun.');
+    return;
+  }
+
+  state.materialCatalog.push({
+    id: generateId(),
+    groupId,
+    detailId,
+    material,
+    brand,
+    listPrice,
+    discount,
+    laborUnitPrice,
+  });
+
+  el.catalogMaterialInput.value = '';
+  el.catalogBrandInput.value = '';
+  el.catalogListPriceInput.value = '';
+  el.catalogDiscountInput.value = '';
+  el.catalogLaborInput.value = '';
+
+  renderMain();
+  renderDetail();
   renderManagement();
 });
 
@@ -296,7 +443,7 @@ document.getElementById('addLineBtn').addEventListener('click', () => {
   if (!group) return;
   const detail = getDetailById(group, state.currentDetailId);
   if (!detail) return;
-  addLineToDetail(detail);
+  addLineFromCatalog(detail, el.detailCatalogSelect.value);
   renderDetail();
   renderGroup();
   renderMain();
@@ -308,7 +455,7 @@ document.getElementById('manageAddLineBtn').addEventListener('click', () => {
   if (!group) return;
   const detail = getDetailById(group, el.manageDetailSelect.value);
   if (!detail) return;
-  addLineToDetail(detail);
+  addLineFromCatalog(detail, el.manageCatalogSelect.value);
   renderManagement();
   renderDetail();
   renderGroup();
@@ -316,6 +463,8 @@ document.getElementById('manageAddLineBtn').addEventListener('click', () => {
 });
 
 el.manageGroupSelect.addEventListener('change', fillManageDetails);
+el.manageDetailSelect.addEventListener('change', fillManageCatalog);
+el.catalogGroupSelect.addEventListener('change', fillCatalogDetailSelector);
 
 el.groupsTableBody.addEventListener('click', (event) => {
   const btn = event.target.closest('button');
@@ -340,7 +489,66 @@ el.groupsTableBody.addEventListener('click', (event) => {
   if (btn.dataset.action === 'delete-group') {
     if (!confirm(`"${group.name}" grubunu silmek istiyor musunuz?`)) return;
     state.groups = state.groups.filter((g) => g.id !== group.id);
+    state.materialCatalog = state.materialCatalog.filter((item) => item.groupId !== group.id);
     renderMain();
+    renderManagement();
+  }
+});
+
+el.catalogTableBody.addEventListener('click', (event) => {
+  const btn = event.target.closest('button');
+  if (!btn) return;
+  const item = getCatalogById(btn.dataset.id);
+  if (!item) return;
+
+  if (btn.dataset.action === 'edit-catalog') {
+    const material = prompt('Malzeme adı:', item.material);
+    if (!material) return;
+    const brand = prompt('Marka:', item.brand);
+    if (!brand) return;
+    const listPrice = Number(prompt('Liste fiyatı:', item.listPrice) || item.listPrice);
+    const discount = Number(prompt('İskonto %:', item.discount) || item.discount);
+    const laborUnitPrice = Number(prompt('İşçilik birim fiyatı:', item.laborUnitPrice) || item.laborUnitPrice);
+
+    item.material = material;
+    item.brand = brand;
+    item.listPrice = listPrice;
+    item.discount = discount;
+    item.laborUnitPrice = laborUnitPrice;
+
+    state.groups.forEach((group) => {
+      group.details.forEach((detail) => {
+        detail.lines.forEach((line) => {
+          if (line.catalogId === item.id) {
+            line.material = item.material;
+            line.brand = item.brand;
+            line.listPrice = item.listPrice;
+            line.discount = item.discount;
+            line.laborUnitPrice = item.laborUnitPrice;
+          }
+        });
+      });
+    });
+
+    renderMain();
+    renderDetail();
+    renderGroup();
+    renderManagement();
+  }
+
+  if (btn.dataset.action === 'delete-catalog') {
+    if (!confirm('Katalog malzemesini silmek istiyor musunuz?')) return;
+    state.materialCatalog = state.materialCatalog.filter((catalogItem) => catalogItem.id !== item.id);
+
+    state.groups.forEach((group) => {
+      group.details.forEach((detail) => {
+        detail.lines = detail.lines.filter((line) => line.catalogId !== item.id);
+      });
+    });
+
+    renderMain();
+    renderDetail();
+    renderGroup();
     renderManagement();
   }
 });
@@ -370,6 +578,7 @@ el.detailsTableBody.addEventListener('click', (event) => {
   if (btn.dataset.action === 'delete-detail') {
     if (!confirm(`"${detail.name}" iş detayını silmek istiyor musunuz?`)) return;
     group.details = group.details.filter((d) => d.id !== detail.id);
+    state.materialCatalog = state.materialCatalog.filter((item) => item.detailId !== detail.id);
     renderGroup();
     renderMain();
     renderManagement();
@@ -402,16 +611,6 @@ el.linesTableBody.addEventListener('click', (event) => {
   const line = detail.lines.find((item) => item.id === btn.dataset.id);
   if (!line) return;
 
-  if (btn.dataset.action === 'edit-line') {
-    const material = prompt('Malzeme adı:', line.material);
-    if (material) line.material = material;
-    const brand = prompt('Marka:', line.brand);
-    if (brand) line.brand = brand;
-    renderDetail();
-    renderGroup();
-    renderMain();
-    renderManagement();
-  }
   if (btn.dataset.action === 'delete-line') {
     if (!confirm(`"${line.material} - ${line.brand}" satırını silmek istiyor musunuz?`)) return;
     detail.lines = detail.lines.filter((item) => item.id !== line.id);
@@ -425,20 +624,44 @@ el.linesTableBody.addEventListener('click', (event) => {
 el.managementTableBody.addEventListener('click', (event) => {
   const btn = event.target.closest('button');
   if (!btn) return;
-  if (btn.dataset.action !== 'manage-delete-line') return;
 
   const group = getGroupById(btn.dataset.groupId);
   if (!group) return;
   const detail = getDetailById(group, btn.dataset.detailId);
   if (!detail) return;
+  const line = detail.lines.find((item) => item.id === btn.dataset.lineId);
+  if (!line) return;
 
-  if (!confirm('Seçili malzemeyi silmek istiyor musunuz?')) return;
-  detail.lines = detail.lines.filter((line) => line.id !== btn.dataset.lineId);
+  if (btn.dataset.action === 'manage-edit-line') {
+    const material = prompt('Malzeme adı:', line.material);
+    if (!material) return;
+    const brand = prompt('Marka:', line.brand);
+    if (!brand) return;
+    const listPrice = Number(prompt('Liste fiyatı:', line.listPrice) || line.listPrice);
+    const discount = Number(prompt('İskonto %:', line.discount) || line.discount);
+    const laborUnitPrice = Number(prompt('İşçilik birim fiyatı:', line.laborUnitPrice) || line.laborUnitPrice);
 
-  renderManagement();
-  renderDetail();
-  renderGroup();
-  renderMain();
+    line.material = material;
+    line.brand = brand;
+    line.listPrice = listPrice;
+    line.discount = discount;
+    line.laborUnitPrice = laborUnitPrice;
+
+    renderManagement();
+    renderDetail();
+    renderGroup();
+    renderMain();
+  }
+
+  if (btn.dataset.action === 'manage-delete-line') {
+    if (!confirm('Seçili malzemeyi silmek istiyor musunuz?')) return;
+    detail.lines = detail.lines.filter((lineItem) => lineItem.id !== btn.dataset.lineId);
+
+    renderManagement();
+    renderDetail();
+    renderGroup();
+    renderMain();
+  }
 });
 
 loadData();

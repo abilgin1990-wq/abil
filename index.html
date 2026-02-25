@@ -34,6 +34,33 @@
           </thead>
           <tbody id="groupsTableBody"></tbody>
         </table>
+
+        <h3>Malzeme Kataloğu (Ana Formdan Ekle)</h3>
+        <div class="inline-form">
+          <select id="catalogGroupSelect"></select>
+          <select id="catalogDetailSelect"></select>
+          <input id="catalogMaterialInput" type="text" placeholder="Malzeme adı" />
+          <input id="catalogBrandInput" type="text" placeholder="Marka" />
+          <input id="catalogListPriceInput" type="number" min="0" step="0.01" placeholder="Liste fiyatı" />
+          <input id="catalogDiscountInput" type="number" min="0" step="0.01" placeholder="İskonto %" />
+          <input id="catalogLaborInput" type="number" min="0" step="0.01" placeholder="İşçilik birim" />
+          <button id="addCatalogBtn">Malzeme Kataloğuna Ekle</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Tesisat Grubu</th>
+              <th>İş Detayı</th>
+              <th>Malzeme</th>
+              <th>Marka</th>
+              <th>Liste Fiyatı</th>
+              <th>İskonto %</th>
+              <th>İşçilik Birim</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="catalogTableBody"></tbody>
+        </table>
       </section>
 
       <section id="groupView" class="view">
@@ -59,7 +86,8 @@
       <section id="detailView" class="view">
         <h2 id="detailTitle">İş Detayı</h2>
         <div class="inline-form">
-          <button id="addLineBtn">Malzeme/Marka Ekle</button>
+          <select id="detailCatalogSelect"></select>
+          <button id="addLineBtn">Katalogdan Malzeme Ekle</button>
           <button id="backToGroupBtn">Geri</button>
         </div>
         <table>
@@ -91,11 +119,12 @@
 
       <section id="managementView" class="view">
         <h2>Malzeme Yönetimi (Tüm Gruplar)</h2>
-        <p class="hint">Tek bir sayfadan tüm tesisat gruplarının iş detaylarına malzeme/marka ekleyebilir, düzenleyebilir veya silebilirsiniz.</p>
+        <p class="hint">Katalogdaki malzemelerden satır ekleyebilir; mevcut satırları düzenleyebilir veya silebilirsiniz.</p>
         <div class="inline-form">
           <select id="manageGroupSelect"></select>
           <select id="manageDetailSelect"></select>
-          <button id="manageAddLineBtn">Seçili İş Detayına Malzeme/Marka Ekle</button>
+          <select id="manageCatalogSelect"></select>
+          <button id="manageAddLineBtn">Seçili İş Detayına Ekle</button>
         </div>
         <table>
           <thead>

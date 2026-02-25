@@ -18,8 +18,15 @@ header {
   color: #fff;
 }
 
-h1, h2 {
+h1,
+h2,
+h3 {
   margin: 0;
+}
+
+h3 {
+  margin-top: 20px;
+  margin-bottom: 8px;
 }
 
 main {
@@ -41,7 +48,9 @@ main {
   flex-wrap: wrap;
 }
 
-input, select, button {
+input,
+select,
+button {
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
@@ -63,9 +72,11 @@ table {
   background: #fff;
   border-radius: 10px;
   overflow: hidden;
+  margin-bottom: 16px;
 }
 
-th, td {
+th,
+td {
   border-bottom: 1px solid #e5e7eb;
   padding: 8px;
   text-align: left;
