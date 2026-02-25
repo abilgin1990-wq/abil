@@ -72,6 +72,31 @@ function getGroupTotal(groupId) {
     .reduce((sum, d) => sum + getDetailTotal(d.id), 0);
 }
 
+
+function exportMainToExcel() {
+  const headers = ['Tesisat Grubu', 'Tutar', 'Detay'];
+  const rows = state.plumbingGroups.map((g) => [
+    g.name,
+    Number(getGroupTotal(g.id)).toFixed(2),
+    (g.description || '').replaceAll('\n', ' '),
+  ]);
+  const grandTotal = state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
+  rows.push(['GENEL TOPLAM', Number(grandTotal).toFixed(2), '']);
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(';'))
+    .join('\n');
+
+  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'ana-form.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 function showMainView() {
   showView('main');
 
@@ -107,6 +132,9 @@ function showMainView() {
         <label style="align-self:end;">
           <button class="primary" type="submit">Tesisat Grubu Ekle</button>
         </label>
+        <label style="align-self:end;">
+          <button id="exportMainExcel" type="button">Ana Sayfayı Excele Aktar</button>
+        </label>
       </form>
     </div>
 
@@ -123,11 +151,20 @@ function showMainView() {
         <tbody>
           ${rows || '<tr><td colspan="4">Henüz tesisat grubu yok.</td></tr>'}
         </tbody>
+        <tfoot>
+          <tr>
+            <td><b>Genel Toplam</b></td>
+            <td class="right total">${formatMoney(state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0))}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   `;
 
   const groupForm = document.getElementById('groupForm');
+  document.getElementById('exportMainExcel').addEventListener('click', exportMainToExcel);
+
   groupForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const formData = new FormData(groupForm);
