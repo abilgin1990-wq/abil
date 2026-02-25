@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Araba Yarış Uygulaması</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>🏁 Araba Yarış Uygulaması</h1>
+        <p>Ok tuşlarıyla aracı kontrol et. Çarpışmadan mümkün olduğunca uzun süre dayan!</p>
+      </header>
+
+      <section class="hud">
+        <div>Skor: <span id="score">0</span></div>
+        <div>En Yüksek Skor: <span id="highScore">0</span></div>
+        <div>Hız: <span id="speed">1</span>x</div>
+      </section>
+
+      <canvas id="gameCanvas" width="420" height="640" aria-label="Araba yarış alanı"></canvas>
+
+      <section class="controls">
+        <button id="startBtn">Oyunu Başlat</button>
+        <button id="restartBtn" disabled>Yeniden Başlat</button>
+      </section>
+
+      <p id="message" class="message">Başlamak için "Oyunu Başlat" düğmesine bas.</p>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
