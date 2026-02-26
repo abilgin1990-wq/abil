@@ -255,6 +255,37 @@ function calcMaterialUnitPriceForData(catalogMaterial, data) {
   return listPriceTry * (1 - catalogMaterial.discount / 100);
 }
 
+
+function getDetailSums(detailId) {
+  const lines = getData().lineItemsByDetail[detailId] || [];
+  return lines.reduce(
+    (acc, line) => {
+      const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
+      if (!catalog) return acc;
+      const unitMaterial = calcMaterialUnitPrice(catalog);
+      const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
+      acc.material += unitMaterial * line.quantity;
+      acc.labor += laborUnitPrice * line.quantity;
+      return acc;
+    },
+    { material: 0, labor: 0 },
+  );
+}
+
+function getGroupSums(groupId) {
+  return getData().jobDetails
+    .filter((d) => d.groupId === groupId)
+    .reduce(
+      (acc, d) => {
+        const sums = getDetailSums(d.id);
+        acc.material += sums.material;
+        acc.labor += sums.labor;
+        return acc;
+      },
+      { material: 0, labor: 0 },
+    );
+}
+
 function getDetailTotal(detailId) {
   const lines = getData().lineItemsByDetail[detailId] || [];
   return lines.reduce((sum, line) => {
@@ -628,6 +659,7 @@ function showGroupView() {
 
   showView('group');
   const details = getData().jobDetails.filter((d) => d.groupId === group.id);
+  const groupSums = getGroupSums(group.id);
 
   const rows = details
     .map(
@@ -676,7 +708,9 @@ function showGroupView() {
           ${rows || '<tr><td colspan="4">Bu grupta iş detayı yok.</td></tr>'}
         </tbody>
         <tfoot>
-          <tr><td><b>Genel Toplam</b></td><td class="right total">${formatMoney(getGroupTotal(group.id))}</td><td colspan="2"></td></tr>
+          <tr><td><b>İş detaylarının içindeki Malzemelerin Toplamı</b></td><td class="right total">${formatMoney(groupSums.material)}</td><td colspan="2"></td></tr>
+          <tr><td><b>İş detaylarının içindeki İşçilikler Toplamı</b></td><td class="right total">${formatMoney(groupSums.labor)}</td><td colspan="2"></td></tr>
+          <tr><td><b>Genel Toplam</b></td><td class="right total">${formatMoney(groupSums.material + groupSums.labor)}</td><td colspan="2"></td></tr>
         </tfoot>
       </table>
     </div>
