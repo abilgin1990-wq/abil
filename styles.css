@@ -24,7 +24,7 @@ header {
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
 }
@@ -36,9 +36,24 @@ h4 {
   margin: 0.2rem 0;
 }
 
-nav {
+.top-nav-layout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.2rem;
+  margin-left: auto;
+}
+
+.left-nav-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.right-nav {
   display: flex;
   gap: 0.5rem;
+  align-items: flex-start;
 }
 
 main {
@@ -141,4 +156,17 @@ th {
 .total {
   font-weight: bold;
   font-size: 1.05rem;
+}
+
+
+@media (max-width: 900px) {
+  .top-nav-layout {
+    width: 100%;
+    margin-left: 0;
+    flex-direction: column;
+  }
+
+  .right-nav {
+    flex-wrap: wrap;
+  }
 }
