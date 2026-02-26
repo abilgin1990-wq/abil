@@ -303,11 +303,41 @@ function exportMainToExcel() {
 function showCatalogView() {
   showView('catalog');
   const global = getGlobalCatalog();
-  const groupOptions = global.plumbingGroups.map((g) => `<option value="${g.id}">${g.name}</option>`).join('');
-  const rows = global.jobDetails.map((d) => {
-    const group = global.plumbingGroups.find((g) => g.id === d.groupId);
-    return `<tr><td>${group?.name || '-'}</td><td>${d.name}</td><td>${d.description || ''}</td></tr>`;
-  }).join('');
+
+  const groupOptions = global.plumbingGroups
+    .map((g) => `<option value="${g.id}">${g.name}</option>`)
+    .join('');
+
+  const groupRows = global.plumbingGroups
+    .map(
+      (g) => `<tr>
+        <td>${g.name}</td>
+        <td>
+          <div class="actions">
+            <button data-edit-global-group="${g.id}">Düzenle</button>
+            <button class="danger" data-delete-global-group="${g.id}">Sil</button>
+          </div>
+        </td>
+      </tr>`,
+    )
+    .join('');
+
+  const detailRows = global.jobDetails
+    .map((d) => {
+      const group = global.plumbingGroups.find((g) => g.id === d.groupId);
+      return `<tr>
+        <td>${group?.name || '-'}</td>
+        <td>${d.name}</td>
+        <td>${d.description || ''}</td>
+        <td>
+          <div class="actions">
+            <button data-edit-global-detail="${d.id}">Düzenle</button>
+            <button class="danger" data-delete-global-detail="${d.id}">Sil</button>
+          </div>
+        </td>
+      </tr>`;
+    })
+    .join('');
 
   views.catalog.innerHTML = `
     <div class="card">
@@ -331,16 +361,30 @@ function showCatalogView() {
         <label><button class="primary" type="submit">İş Detayı Grubu Ekle</button></label>
       </form>
     </div>
+
     <div class="card">
-      <table><thead><tr><th>Tesisat Grubu</th><th>İş Detayı Grubu</th><th>Detay</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="3">Henüz kayıt yok.</td></tr>'}</tbody></table>
+      <h3>Tesisat Grupları</h3>
+      <table>
+        <thead><tr><th>Tesisat Grubu</th><th>İşlem</th></tr></thead>
+        <tbody>${groupRows || '<tr><td colspan="2">Henüz tesisat grubu yok.</td></tr>'}</tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>İş Detayı Grupları</h3>
+      <table>
+        <thead><tr><th>Tesisat Grubu</th><th>İş Detayı Grubu</th><th>Detay</th><th>İşlem</th></tr></thead>
+        <tbody>${detailRows || '<tr><td colspan="4">Henüz iş detayı grubu yok.</td></tr>'}</tbody>
+      </table>
     </div>
   `;
 
   document.getElementById('globalGroupForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    global.plumbingGroups.push({ id: uid('grp'), name: String(fd.get('groupName')).trim(), description: '' });
+    const name = String(fd.get('groupName')).trim();
+    if (!name) return;
+    global.plumbingGroups.push({ id: uid('grp'), name, description: '' });
     saveState();
     showCatalogView();
   });
@@ -348,9 +392,115 @@ function showCatalogView() {
   document.getElementById('globalDetailForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    global.jobDetails.push({ id: uid('det'), groupId: String(fd.get('groupId')), name: String(fd.get('detailName')).trim(), description: String(fd.get('description') || '').trim() });
+    const groupId = String(fd.get('groupId'));
+    const detailName = String(fd.get('detailName')).trim();
+    if (!groupId || !detailName) return;
+    global.jobDetails.push({
+      id: uid('det'),
+      groupId,
+      name: detailName,
+      description: String(fd.get('description') || '').trim(),
+    });
     saveState();
     showCatalogView();
+  });
+
+  views.catalog.querySelectorAll('[data-edit-global-group]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const group = global.plumbingGroups.find((g) => g.id === btn.dataset.editGlobalGroup);
+      if (!group) return;
+      const name = prompt('Tesisat grubu adı', group.name);
+      if (name === null) return;
+      group.name = name.trim() || group.name;
+
+      state.proposals.forEach((proposal) => {
+        proposal.data.plumbingGroups.forEach((g) => {
+          if (g.id === group.id) g.name = group.name;
+        });
+      });
+
+      saveState();
+      showCatalogView();
+    });
+  });
+
+  views.catalog.querySelectorAll('[data-delete-global-group]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!confirm('Silmek istiyor musunuz?')) return;
+      const groupId = btn.dataset.deleteGlobalGroup;
+      const detailIds = global.jobDetails.filter((d) => d.groupId === groupId).map((d) => d.id);
+
+      global.plumbingGroups = global.plumbingGroups.filter((g) => g.id !== groupId);
+      global.jobDetails = global.jobDetails.filter((d) => d.groupId !== groupId);
+      global.materialCatalog = global.materialCatalog.filter(
+        (m) => m.groupId !== groupId && !detailIds.includes(m.jobDetailId),
+      );
+
+      state.proposals.forEach((proposal) => {
+        proposal.data.plumbingGroups = proposal.data.plumbingGroups.filter((g) => g.id !== groupId);
+        proposal.data.jobDetails = proposal.data.jobDetails.filter((d) => d.groupId !== groupId);
+        detailIds.forEach((id) => delete proposal.data.lineItemsByDetail[id]);
+      });
+
+      saveState();
+      showCatalogView();
+    });
+  });
+
+  views.catalog.querySelectorAll('[data-edit-global-detail]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const detail = global.jobDetails.find((d) => d.id === btn.dataset.editGlobalDetail);
+      if (!detail) return;
+
+      const selectedGroup = prompt('Tesisat Grubu ID', detail.groupId);
+      if (selectedGroup === null) return;
+      const name = prompt('İş detayı grubu adı', detail.name);
+      if (name === null) return;
+      const desc = prompt('Detay', detail.description || '');
+      if (desc === null) return;
+
+      const groupId = selectedGroup.trim();
+      const groupExists = global.plumbingGroups.some((g) => g.id === groupId);
+      if (!groupExists) {
+        alert('Geçerli bir tesisat grubu seçiniz.');
+        return;
+      }
+
+      detail.groupId = groupId;
+      detail.name = name.trim() || detail.name;
+      detail.description = desc.trim();
+
+      state.proposals.forEach((proposal) => {
+        proposal.data.jobDetails.forEach((d) => {
+          if (d.id === detail.id) {
+            d.groupId = detail.groupId;
+            d.name = detail.name;
+            d.description = detail.description;
+          }
+        });
+      });
+
+      saveState();
+      showCatalogView();
+    });
+  });
+
+  views.catalog.querySelectorAll('[data-delete-global-detail]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!confirm('Silmek istiyor musunuz?')) return;
+      const detailId = btn.dataset.deleteGlobalDetail;
+
+      global.jobDetails = global.jobDetails.filter((d) => d.id !== detailId);
+      global.materialCatalog = global.materialCatalog.filter((m) => m.jobDetailId !== detailId);
+
+      state.proposals.forEach((proposal) => {
+        proposal.data.jobDetails = proposal.data.jobDetails.filter((d) => d.id !== detailId);
+        delete proposal.data.lineItemsByDetail[detailId];
+      });
+
+      saveState();
+      showCatalogView();
+    });
   });
 }
 
