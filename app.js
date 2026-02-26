@@ -56,9 +56,7 @@ function formatMoney(value) {
 
 function calcMaterialUnitPrice(catalogMaterial) {
   const listPriceTry = toTryAmount(catalogMaterial.listPrice, catalogMaterial.currency || 'TRY');
-  const vatRate = Number(catalogMaterial.vatRate ?? 20);
-  const listPriceWithVat = listPriceTry * (1 + vatRate / 100);
-  return listPriceWithVat * (1 - catalogMaterial.discount / 100);
+  return listPriceTry * (1 - catalogMaterial.discount / 100);
 }
 
 function formatListPriceWithCurrency(catalogMaterial) {
@@ -181,6 +179,16 @@ function showMainView() {
           <tr>
             <td><b>Genel Toplam</b></td>
             <td class="right total">${formatMoney(state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0))}</td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td><b>KDV Tutarı (%20)</b></td>
+            <td class="right total">${formatMoney(state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0) * 0.2)}</td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td><b>KDV Dahil Toplam Tutar</b></td>
+            <td class="right total">${formatMoney(state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0) * 1.2)}</td>
             <td colspan="2"></td>
           </tr>
         </tfoot>
@@ -526,9 +534,6 @@ function showMaterialsView(options = {}) {
             <option value="EUR">Euro</option>
           </select>
         </label>
-        <label>K.D.V. (%)
-          <input id="materialVatInput" type="number" step="0.01" min="0" name="vatRate" required value="20" />
-        </label>
         <label>İskonto (%)
           <input id="materialDiscountInput" type="number" step="0.01" min="0" max="100" name="discount" required value="0" />
         </label>
@@ -562,7 +567,6 @@ function showMaterialsView(options = {}) {
   const materialBrandInput = document.getElementById('materialBrandInput');
   const materialListPriceInput = document.getElementById('materialListPriceInput');
   const materialCurrencySelect = document.getElementById('materialCurrencySelect');
-  const materialVatInput = document.getElementById('materialVatInput');
   const usdRateInput = document.getElementById('usdRateInput');
   const eurRateInput = document.getElementById('eurRateInput');
   const materialDiscountInput = document.getElementById('materialDiscountInput');
@@ -704,8 +708,6 @@ function showMaterialsView(options = {}) {
         if (discount === null) return;
         const currency = prompt('Para birimi (TRY/USD/EUR)', String(material.currency || 'TRY'));
         if (currency === null) return;
-        const vatRate = prompt('K.D.V. (%)', String(material.vatRate ?? 20));
-        if (vatRate === null) return;
         const laborUnitPrice = prompt('İşçilik fiyatı', String(material.laborUnitPrice || 0));
         if (laborUnitPrice === null) return;
 
@@ -735,7 +737,6 @@ function showMaterialsView(options = {}) {
 
         material.discount = Number(discount);
         material.currency = normalizedCurrency;
-        material.vatRate = Number(vatRate);
         material.laborUnitPrice = Number(laborUnitPrice);
 
         saveState();
@@ -771,7 +772,6 @@ function showMaterialsView(options = {}) {
     const name = String(fd.get('name')).trim();
     const brand = String(fd.get('brand')).trim();
     const currency = String(fd.get('currency') || 'TRY').toUpperCase();
-    const vatRate = Number(fd.get('vatRate') || 20);
 
     const duplicate = state.materialCatalog.some(
       (m) => m.name.toLowerCase() === name.toLowerCase() && m.brand.toLowerCase() === brand.toLowerCase(),
@@ -790,7 +790,6 @@ function showMaterialsView(options = {}) {
       brand,
       listPrice: Number(fd.get('listPrice')),
       currency,
-      vatRate,
       discount: Number(fd.get('discount')),
       laborUnitPrice: Number(fd.get('laborUnitPrice')),
     });
@@ -812,7 +811,6 @@ function showMaterialsView(options = {}) {
   materialBrandInput.value = options.brand || '';
   materialListPriceInput.value = options.listPrice || '';
   materialCurrencySelect.value = options.currency || 'TRY';
-  materialVatInput.value = options.vatRate || '20';
   materialDiscountInput.value = options.discount || '0';
   materialLaborInput.value = options.laborUnitPrice || '0';
 
