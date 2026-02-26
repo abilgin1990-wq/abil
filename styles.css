@@ -167,7 +167,8 @@ td {
 }
 
 th {
-  background: #eef3fa;
+  background: var(--primary);
+  color: #fff;
 }
 
 .small {
