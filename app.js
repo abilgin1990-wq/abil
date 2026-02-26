@@ -368,29 +368,138 @@ function getGroupTotal(groupId) {
 }
 
 
-function exportMainToExcel() {
-  const headers = ['Tesisat Grubu', 'Tutar', 'Detay'];
-  const rows = getData().plumbingGroups.map((g) => [
-    g.name,
-    Number(getGroupTotal(g.id)).toFixed(2),
-    (g.description || '').replaceAll('\n', ' '),
-  ]);
-  const grandTotal = getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
-  rows.push(['GENEL TOPLAM', Number(grandTotal).toFixed(2), '']);
-
+function downloadCsvFile(filename, headers, rows) {
   const csv = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(';'))
+    .map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';'))
     .join('\n');
 
-  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'ana-form.csv';
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+function exportMainToExcel() {
+  const headers = ['Tesisat Grubu', 'Tutar'];
+  const rows = getData().plumbingGroups.map((g) => [
+    g.name,
+    Number(getGroupTotal(g.id)).toFixed(2),
+  ]);
+
+  const total = getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
+  const vat = total * 0.2;
+  const totalWithVat = total + vat;
+
+  rows.push(['GENEL TOPLAM', Number(total).toFixed(2)]);
+  rows.push(['KDV TUTARI (%20)', Number(vat).toFixed(2)]);
+  rows.push(['KDV DAHİL TOPLAM TUTAR', Number(totalWithVat).toFixed(2)]);
+
+  downloadCsvFile('teklif-ana-kalemler.csv', headers, rows);
+}
+
+function exportDetailedToExcel() {
+  const headers = [
+    'Kayıt Tipi',
+    'Tesisat Grubu',
+    'İş Detayı',
+    'Malzeme',
+    'Marka',
+    'Adet',
+    'Liste Fiyatı',
+    'Para Birimi',
+    'İskonto (%)',
+    'Birim Malzeme Fiyatı (TL)',
+    'İşçilik Birim Fiyatı (TL)',
+    'Malzeme Toplamı (TL)',
+    'İşçilik Toplamı (TL)',
+    'Satır Toplamı (TL)',
+  ];
+
+  const rows = [];
+
+  getData().plumbingGroups.forEach((group) => {
+    const groupSums = getGroupSums(group.id);
+    const groupTotal = groupSums.material + groupSums.labor;
+
+    rows.push([
+      'TESİSAT GRUBU',
+      group.name,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      Number(groupSums.material).toFixed(2),
+      Number(groupSums.labor).toFixed(2),
+      Number(groupTotal).toFixed(2),
+    ]);
+
+    const details = getData().jobDetails.filter((d) => d.groupId === group.id);
+    details.forEach((detail) => {
+      const detailSums = getDetailSums(detail.id);
+      const detailTotal = detailSums.material + detailSums.labor;
+      rows.push([
+        'İŞ DETAYI',
+        group.name,
+        detail.name,
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        Number(detailSums.material).toFixed(2),
+        Number(detailSums.labor).toFixed(2),
+        Number(detailTotal).toFixed(2),
+      ]);
+
+      const lines = getData().lineItemsByDetail[detail.id] || [];
+      lines.forEach((line) => {
+        const pricing = getLinePricing(line);
+        if (!pricing) return;
+        const source = pricing.source || {};
+        const catalog = pricing.catalog || {};
+        rows.push([
+          'MALZEME SATIRI',
+          group.name,
+          detail.name,
+          catalog.name || '-',
+          catalog.brand || '-',
+          Number(line.quantity || 0).toFixed(0),
+          Number(source.listPrice || 0).toFixed(2),
+          source.currency || 'TRY',
+          Number(source.discount || 0).toFixed(2),
+          Number(pricing.unitMaterial || 0).toFixed(2),
+          Number(pricing.laborUnitPrice || 0).toFixed(2),
+          Number(pricing.materialTotal || 0).toFixed(2),
+          Number(pricing.laborTotal || 0).toFixed(2),
+          Number((pricing.materialTotal || 0) + (pricing.laborTotal || 0)).toFixed(2),
+        ]);
+      });
+    });
+  });
+
+  const total = getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
+  const vat = total * 0.2;
+  const totalWithVat = total + vat;
+
+  rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+  rows.push(['TOPLAM', '', '', '', '', '', '', '', '', '', '', '', '', Number(total).toFixed(2)]);
+  rows.push(['KDV TUTARI (%20)', '', '', '', '', '', '', '', '', '', '', '', '', Number(vat).toFixed(2)]);
+  rows.push(['KDV DAHİL TOPLAM TUTAR', '', '', '', '', '', '', '', '', '', '', '', '', Number(totalWithVat).toFixed(2)]);
+
+  downloadCsvFile('teklif-detayli.csv', headers, rows);
 }
 
 function showCatalogView() {
@@ -649,6 +758,9 @@ function showMainView() {
         <label style="align-self:end;">
           <button id="exportMainExcel" type="button">Ana Sayfayı Excele Aktar</button>
         </label>
+        <label style="align-self:end;">
+          <button id="exportDetailedExcel" type="button">Detaylı Excele Aktar</button>
+        </label>
       </form>
       <datalist id="materialNameSuggestions"></datalist>
       <datalist id="materialBrandSuggestions"></datalist>
@@ -689,6 +801,7 @@ function showMainView() {
 
   const groupForm = document.getElementById('groupForm');
   document.getElementById('exportMainExcel').addEventListener('click', exportMainToExcel);
+  document.getElementById('exportDetailedExcel').addEventListener('click', exportDetailedToExcel);
 
   groupForm.addEventListener('submit', (e) => {
     e.preventDefault();
