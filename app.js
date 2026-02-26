@@ -547,7 +547,6 @@ function showMainView() {
       <tr>
         <td>${g.name}</td>
         <td class="right">${formatMoney(getGroupTotal(g.id))}</td>
-        <td>${g.description || ''}</td>
         <td>
           <div class="actions">
             <button data-open-group="${g.id}">Aç</button>
@@ -588,28 +587,27 @@ function showMainView() {
           <tr>
             <th>Tesisat Grubu</th>
             <th class="right">Tutar</th>
-            <th>Detay</th>
             <th>İşlem</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || '<tr><td colspan="4">Henüz tesisat grubu yok.</td></tr>'}
+          ${rows || '<tr><td colspan="3">Henüz tesisat grubu yok.</td></tr>'}
         </tbody>
         <tfoot>
           <tr>
             <td><b>Genel Toplam</b></td>
             <td class="right total">${formatMoney(getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0))}</td>
-            <td colspan="2"></td>
+            <td></td>
           </tr>
           <tr>
             <td><b>KDV Tutarı (%20)</b></td>
             <td class="right total">${formatMoney(getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0) * 0.2)}</td>
-            <td colspan="2"></td>
+            <td></td>
           </tr>
           <tr>
             <td><b>KDV Dahil Toplam Tutar</b></td>
             <td class="right total">${formatMoney(getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0) * 1.2)}</td>
-            <td colspan="2"></td>
+            <td></td>
           </tr>
         </tfoot>
       </table>
@@ -667,7 +665,6 @@ function showGroupView() {
       <tr>
         <td>${d.name}</td>
         <td class="right">${formatMoney(getDetailTotal(d.id))}</td>
-        <td>${d.description || ''}</td>
         <td>
           <div class="actions">
             <button data-open-detail="${d.id}">İş Detayına Gir</button>
@@ -702,15 +699,15 @@ function showGroupView() {
     <div class="card">
       <table>
         <thead>
-          <tr><th>İş Detayı</th><th class="right">Toplam Tutar</th><th>Detay</th><th>İşlem</th></tr>
+          <tr><th>İş Detayı</th><th class="right">Toplam Tutar</th><th>İşlem</th></tr>
         </thead>
         <tbody>
-          ${rows || '<tr><td colspan="4">Bu grupta iş detayı yok.</td></tr>'}
+          ${rows || '<tr><td colspan="3">Bu grupta iş detayı yok.</td></tr>'}
         </tbody>
         <tfoot>
-          <tr><td><b>İş detaylarının içindeki Malzemelerin Toplamı</b></td><td class="right total">${formatMoney(groupSums.material)}</td><td colspan="2"></td></tr>
-          <tr><td><b>İş detaylarının içindeki İşçilikler Toplamı</b></td><td class="right total">${formatMoney(groupSums.labor)}</td><td colspan="2"></td></tr>
-          <tr><td><b>Genel Toplam</b></td><td class="right total">${formatMoney(groupSums.material + groupSums.labor)}</td><td colspan="2"></td></tr>
+          <tr><td><b>İş detaylarının içindeki Malzemelerin Toplamı</b></td><td class="right total">${formatMoney(groupSums.material)}</td><td></td></tr>
+          <tr><td><b>İş detaylarının içindeki İşçilikler Toplamı</b></td><td class="right total">${formatMoney(groupSums.labor)}</td><td></td></tr>
+          <tr><td><b>Genel Toplam</b></td><td class="right total">${formatMoney(groupSums.material + groupSums.labor)}</td><td></td></tr>
         </tfoot>
       </table>
     </div>
