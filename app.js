@@ -136,6 +136,8 @@ function showMainView() {
           <button id="exportMainExcel" type="button">Ana Sayfayı Excele Aktar</button>
         </label>
       </form>
+      <datalist id="materialNameSuggestions"></datalist>
+      <datalist id="materialBrandSuggestions"></datalist>
     </div>
 
     <div class="card">
@@ -254,6 +256,8 @@ function showGroupView() {
           <button class="primary" type="submit">İş Detayı Ekle</button>
         </label>
       </form>
+      <datalist id="materialNameSuggestions"></datalist>
+      <datalist id="materialBrandSuggestions"></datalist>
     </div>
 
     <div class="card">
@@ -380,6 +384,8 @@ function showDetailView() {
           <button class="primary" type="submit">Satır Ekle</button>
         </label>
       </form>
+      <datalist id="materialNameSuggestions"></datalist>
+      <datalist id="materialBrandSuggestions"></datalist>
     </div>
 
     <div class="card">
@@ -473,10 +479,10 @@ function showMaterialsView(options = {}) {
           </select>
         </label>
         <label>Malzeme Adı
-          <input id="materialNameInput" name="name" required placeholder="Örn. Lavabo" />
+          <input id="materialNameInput" name="name" required placeholder="Örn. Lavabo" list="materialNameSuggestions" />
         </label>
         <label>Marka
-          <input id="materialBrandInput" name="brand" required placeholder="Örn. ECA" />
+          <input id="materialBrandInput" name="brand" required placeholder="Örn. ECA" list="materialBrandSuggestions" />
         </label>
         <label>Liste Fiyatı
           <input id="materialListPriceInput" type="number" step="0.01" min="0" name="listPrice" required />
@@ -491,6 +497,8 @@ function showMaterialsView(options = {}) {
           <button class="primary" type="submit">Ekle</button>
         </label>
       </form>
+      <datalist id="materialNameSuggestions"></datalist>
+      <datalist id="materialBrandSuggestions"></datalist>
     </div>
 
     <div class="card">
@@ -513,6 +521,8 @@ function showMaterialsView(options = {}) {
   const materialListPriceInput = document.getElementById('materialListPriceInput');
   const materialDiscountInput = document.getElementById('materialDiscountInput');
   const materialLaborInput = document.getElementById('materialLaborInput');
+  const materialNameSuggestions = document.getElementById('materialNameSuggestions');
+  const materialBrandSuggestions = document.getElementById('materialBrandSuggestions');
   const tableBody = document.getElementById('materialsTableBody');
 
   const fillDetails = () => {
@@ -530,6 +540,36 @@ function showMaterialsView(options = {}) {
     } else if (hasPrevious) {
       detailSelect.value = previousDetailValue;
     }
+  };
+
+  const renderAutoCompleteLists = () => {
+    const selectedGroupId = groupSelect.value;
+    const selectedDetailId = detailSelect.value;
+    const typedName = materialNameInput.value.trim().toLowerCase();
+    const typedBrand = materialBrandInput.value.trim().toLowerCase();
+
+    const scopedMaterials = state.materialCatalog.filter((m) => {
+      const groupMatch = !selectedGroupId || m.groupId === selectedGroupId;
+      const detailMatch = !selectedDetailId || m.jobDetailId === selectedDetailId;
+      return groupMatch && detailMatch;
+    });
+
+    const nameOptions = [...new Set(scopedMaterials.map((m) => m.name))]
+      .filter((name) => !typedName || name.toLowerCase().includes(typedName));
+
+    const brandPool = scopedMaterials.filter(
+      (m) => !typedName || m.name.toLowerCase().includes(typedName),
+    );
+    const brandOptions = [...new Set(brandPool.map((m) => m.brand))]
+      .filter((brand) => !typedBrand || brand.toLowerCase().includes(typedBrand));
+
+    materialNameSuggestions.innerHTML = nameOptions
+      .map((name) => `<option value="${name}"></option>`)
+      .join('');
+
+    materialBrandSuggestions.innerHTML = brandOptions
+      .map((brand) => `<option value="${brand}"></option>`)
+      .join('');
   };
 
   const getFilteredMaterials = () => {
@@ -586,6 +626,7 @@ function showMaterialsView(options = {}) {
           );
         });
         saveState();
+        renderAutoCompleteLists();
         renderMaterialsTable();
       });
     });
@@ -628,6 +669,7 @@ function showMaterialsView(options = {}) {
         material.laborUnitPrice = Number(laborUnitPrice);
 
         saveState();
+        renderAutoCompleteLists();
         renderMaterialsTable();
       });
     });
@@ -635,11 +677,21 @@ function showMaterialsView(options = {}) {
 
   groupSelect.addEventListener('change', () => {
     fillDetails();
+    renderAutoCompleteLists();
     renderMaterialsTable();
   });
-  detailSelect.addEventListener('change', renderMaterialsTable);
-  materialNameInput.addEventListener('input', renderMaterialsTable);
-  materialBrandInput.addEventListener('input', renderMaterialsTable);
+  detailSelect.addEventListener('change', () => {
+    renderAutoCompleteLists();
+    renderMaterialsTable();
+  });
+  materialNameInput.addEventListener('input', () => {
+    renderAutoCompleteLists();
+    renderMaterialsTable();
+  });
+  materialBrandInput.addEventListener('input', () => {
+    renderAutoCompleteLists();
+    renderMaterialsTable();
+  });
 
   document.getElementById('materialForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -674,10 +726,6 @@ function showMaterialsView(options = {}) {
       selectedGroupId: groupId,
       selectedDetailId: jobDetailId,
       name,
-      brand,
-      listPrice: String(fd.get('listPrice')),
-      discount: String(fd.get('discount')),
-      laborUnitPrice: String(fd.get('laborUnitPrice')),
     });
   });
 
@@ -692,5 +740,6 @@ function showMaterialsView(options = {}) {
   materialDiscountInput.value = options.discount || '0';
   materialLaborInput.value = options.laborUnitPrice || '0';
 
+  renderAutoCompleteLists();
   renderMaterialsTable();
 }
