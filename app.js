@@ -24,9 +24,14 @@ function loadState() {
       jobDetails: [],
       materialCatalog: [],
       lineItemsByDetail: {},
+      exchangeRates: { usd: 1, eur: 1 },
     };
   }
-  return JSON.parse(raw);
+  const parsed = JSON.parse(raw);
+  if (!parsed.exchangeRates) parsed.exchangeRates = { usd: 1, eur: 1 };
+  if (typeof parsed.exchangeRates.usd !== 'number') parsed.exchangeRates.usd = 1;
+  if (typeof parsed.exchangeRates.eur !== 'number') parsed.exchangeRates.eur = 1;
+  return parsed;
 }
 
 function saveState() {
@@ -50,7 +55,24 @@ function formatMoney(value) {
 }
 
 function calcMaterialUnitPrice(catalogMaterial) {
-  return catalogMaterial.listPrice * (1 - catalogMaterial.discount / 100);
+  const listPriceTry = toTryAmount(catalogMaterial.listPrice, catalogMaterial.currency || 'TRY');
+  return listPriceTry * (1 - catalogMaterial.discount / 100);
+}
+
+function formatListPriceWithCurrency(catalogMaterial) {
+  const currency = catalogMaterial.currency || 'TRY';
+  const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '₺';
+  return `${symbol}${Number(catalogMaterial.listPrice || 0).toLocaleString('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function toTryAmount(amount, currency) {
+  const value = Number(amount || 0);
+  if (currency === 'USD') return value * Number(state.exchangeRates.usd || 1);
+  if (currency === 'EUR') return value * Number(state.exchangeRates.eur || 1);
+  return value;
 }
 
 function getDetailTotal(detailId) {
@@ -348,7 +370,7 @@ function showDetailView() {
         <td>${catalog.name}</td>
         <td>${catalog.brand}</td>
         <td class="right">${line.quantity}</td>
-        <td class="right">${formatMoney(catalog.listPrice)}</td>
+        <td class="right">${formatListPriceWithCurrency(catalog)}</td>
         <td class="right">%${catalog.discount}</td>
         <td class="right">${formatMoney(unit)}</td>
         <td class="right">${formatMoney(laborUnitPrice)}</td>
@@ -399,7 +421,7 @@ function showDetailView() {
           ${rowHtml || '<tr><td colspan="11">Henüz satır yok.</td></tr>'}
         </tbody>
         <tfoot>
-          <tr><td colspan="9" class="right"><b>Genel Toplam</b></td><td class="right total">${formatMoney(getDetailTotal(detail.id))}</td><td></td></tr>
+          <tr><td colspan="10" class="right"><b>Genel Toplam</b></td><td class="right total">${formatMoney(getDetailTotal(detail.id))}</td><td></td></tr>
         </tfoot>
       </table>
     </div>
@@ -466,6 +488,14 @@ function showMaterialsView(options = {}) {
     <div class="card">
       <h2>Malzeme Yönetimi</h2>
       <p class="small">Tesisat Grubu ve İş Detayı seçip malzeme, marka, fiyat ve iskonto ile kayıt açın.</p>
+      <div class="grid">
+        <label>Dolar Kuru (TL)
+          <input id="usdRateInput" type="number" step="0.0001" min="0" value="${state.exchangeRates.usd}" />
+        </label>
+        <label>Euro Kuru (TL)
+          <input id="eurRateInput" type="number" step="0.0001" min="0" value="${state.exchangeRates.eur}" />
+        </label>
+      </div>
       <form id="materialForm" class="grid">
         <label>Tesisat Grubu
           <select id="materialGroupSelect" name="groupId" required>
@@ -487,6 +517,13 @@ function showMaterialsView(options = {}) {
         <label>Liste Fiyatı
           <input id="materialListPriceInput" type="number" step="0.01" min="0" name="listPrice" required />
         </label>
+        <label>Para Birimi
+          <select id="materialCurrencySelect" name="currency" required>
+            <option value="TRY">TL</option>
+            <option value="USD">Dolar</option>
+            <option value="EUR">Euro</option>
+          </select>
+        </label>
         <label>İskonto (%)
           <input id="materialDiscountInput" type="number" step="0.01" min="0" max="100" name="discount" required value="0" />
         </label>
@@ -506,7 +543,7 @@ function showMaterialsView(options = {}) {
       <table>
         <thead>
           <tr>
-            <th>Tesisat Grubu</th><th>İş Detayı</th><th>Malzeme</th><th>Marka</th><th class="right">Liste Fiyatı</th><th class="right">İskonto</th><th class="right">İşçilik Fiyatı</th><th class="right">Birim Fiyat</th><th>İşlem</th>
+            <th>Tesisat Grubu</th><th>İş Detayı</th><th>Malzeme</th><th>Marka</th><th class="right">Liste Fiyatı</th><th>Para Birimi</th><th class="right">İskonto</th><th class="right">İşçilik Fiyatı</th><th class="right">Birim Fiyat (TL)</th><th>İşlem</th>
           </tr>
         </thead>
         <tbody id="materialsTableBody"></tbody>
@@ -519,11 +556,25 @@ function showMaterialsView(options = {}) {
   const materialNameInput = document.getElementById('materialNameInput');
   const materialBrandInput = document.getElementById('materialBrandInput');
   const materialListPriceInput = document.getElementById('materialListPriceInput');
+  const materialCurrencySelect = document.getElementById('materialCurrencySelect');
+  const usdRateInput = document.getElementById('usdRateInput');
+  const eurRateInput = document.getElementById('eurRateInput');
   const materialDiscountInput = document.getElementById('materialDiscountInput');
   const materialLaborInput = document.getElementById('materialLaborInput');
   const materialNameSuggestions = document.getElementById('materialNameSuggestions');
   const materialBrandSuggestions = document.getElementById('materialBrandSuggestions');
   const tableBody = document.getElementById('materialsTableBody');
+
+  const saveRates = () => {
+    state.exchangeRates.usd = Number(usdRateInput.value || 1);
+    state.exchangeRates.eur = Number(eurRateInput.value || 1);
+    saveState();
+    renderAutoCompleteLists();
+    renderMaterialsTable();
+  };
+
+  usdRateInput.addEventListener('change', saveRates);
+  eurRateInput.addEventListener('change', saveRates);
 
   const fillDetails = () => {
     const details = state.jobDetails.filter((d) => d.groupId === groupSelect.value);
@@ -599,7 +650,8 @@ function showMaterialsView(options = {}) {
           <td>${det?.name || '-'}</td>
           <td>${m.name}</td>
           <td>${m.brand}</td>
-          <td class="right">${formatMoney(m.listPrice)}</td>
+          <td class="right">${formatListPriceWithCurrency(m)}</td>
+          <td>${m.currency || 'TRY'}</td>
           <td class="right">%${m.discount}</td>
           <td class="right">${formatMoney(m.laborUnitPrice || 0)}</td>
           <td class="right">${formatMoney(calcMaterialUnitPrice(m))}</td>
@@ -613,7 +665,7 @@ function showMaterialsView(options = {}) {
       })
       .join('');
 
-    tableBody.innerHTML = rows || '<tr><td colspan="9">Kayıt yok.</td></tr>';
+    tableBody.innerHTML = rows || '<tr><td colspan="10">Kayıt yok.</td></tr>';
 
     views.materials.querySelectorAll('[data-delete-material]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -644,6 +696,8 @@ function showMaterialsView(options = {}) {
         if (listPrice === null) return;
         const discount = prompt('İskonto (%)', String(material.discount));
         if (discount === null) return;
+        const currency = prompt('Para birimi (TRY/USD/EUR)', String(material.currency || 'TRY'));
+        if (currency === null) return;
         const laborUnitPrice = prompt('İşçilik fiyatı', String(material.laborUnitPrice || 0));
         if (laborUnitPrice === null) return;
 
@@ -665,7 +719,14 @@ function showMaterialsView(options = {}) {
         material.name = normalizedName || material.name;
         material.brand = normalizedBrand || material.brand;
         material.listPrice = Number(listPrice);
+        const normalizedCurrency = String(currency).trim().toUpperCase();
+        if (!['TRY', 'USD', 'EUR'].includes(normalizedCurrency)) {
+          alert('Para birimi TRY, USD veya EUR olmalıdır.');
+          return;
+        }
+
         material.discount = Number(discount);
+        material.currency = normalizedCurrency;
         material.laborUnitPrice = Number(laborUnitPrice);
 
         saveState();
@@ -700,6 +761,7 @@ function showMaterialsView(options = {}) {
     const jobDetailId = String(fd.get('jobDetailId'));
     const name = String(fd.get('name')).trim();
     const brand = String(fd.get('brand')).trim();
+    const currency = String(fd.get('currency') || 'TRY').toUpperCase();
 
     const duplicate = state.materialCatalog.some(
       (m) => m.name.toLowerCase() === name.toLowerCase() && m.brand.toLowerCase() === brand.toLowerCase(),
@@ -717,6 +779,7 @@ function showMaterialsView(options = {}) {
       name,
       brand,
       listPrice: Number(fd.get('listPrice')),
+      currency,
       discount: Number(fd.get('discount')),
       laborUnitPrice: Number(fd.get('laborUnitPrice')),
     });
@@ -737,6 +800,7 @@ function showMaterialsView(options = {}) {
   materialNameInput.value = options.name || '';
   materialBrandInput.value = options.brand || '';
   materialListPriceInput.value = options.listPrice || '';
+  materialCurrencySelect.value = options.currency || 'TRY';
   materialDiscountInput.value = options.discount || '0';
   materialLaborInput.value = options.laborUnitPrice || '0';
 
