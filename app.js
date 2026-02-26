@@ -326,6 +326,7 @@ function showDetailView() {
 
   const group = state.plumbingGroups.find((g) => g.id === detail.groupId);
   const catalogForDetail = state.materialCatalog.filter((m) => m.jobDetailId === detail.id);
+  const materialNames = [...new Set(catalogForDetail.map((m) => m.name))];
   const lines = state.lineItemsByDetail[detail.id] || [];
 
   showView('detail');
@@ -361,15 +362,15 @@ function showDetailView() {
       <h2>${detail.name} İş Detayı</h2>
       <p class="small">Malzeme, marka, adet, liste fiyat, iskonto ve işçilikten toplam tutar otomatik hesaplanır.</p>
       <form id="lineForm" class="grid">
-        <label>Malzeme / Marka
-          <select name="catalogMaterialId" required>
+        <label>Malzeme
+          <select id="lineMaterialName" name="materialName" required>
             <option value="">Seçiniz</option>
-            ${catalogForDetail
-              .map(
-                (m) =>
-                  `<option value="${m.id}">${m.name} - ${m.brand} (${formatMoney(calcMaterialUnitPrice(m))})</option>`,
-              )
-              .join('')}
+            ${materialNames.map((name) => `<option value="${name}">${name}</option>`).join('')}
+          </select>
+        </label>
+        <label>Marka
+          <select id="lineBrand" name="brand" required>
+            <option value="">Önce malzeme seçin</option>
           </select>
         </label>
         <label>Adet
@@ -400,12 +401,34 @@ function showDetailView() {
 
   document.getElementById('backToGroup').addEventListener('click', showGroupView);
 
+  const materialNameSelect = document.getElementById('lineMaterialName');
+  const brandSelect = document.getElementById('lineBrand');
+
+  const fillBrands = () => {
+    const selectedName = materialNameSelect.value;
+    const brands = catalogForDetail.filter((m) => m.name === selectedName);
+    brandSelect.innerHTML = `
+      <option value="">Seçiniz</option>
+      ${brands
+        .map((m) => `<option value="${m.id}">${m.brand} (${formatMoney(calcMaterialUnitPrice(m))})</option>`)
+        .join('')}
+    `;
+  };
+
+  materialNameSelect.addEventListener('change', fillBrands);
+
   document.getElementById('lineForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const selectedCatalogId = String(fd.get('brand'));
+    if (!selectedCatalogId) {
+      alert('Lütfen marka seçiniz.');
+      return;
+    }
+
     const line = {
       id: uid('line'),
-      catalogMaterialId: String(fd.get('catalogMaterialId')),
+      catalogMaterialId: selectedCatalogId,
       quantity: Number(fd.get('quantity')),
     };
     if (!state.lineItemsByDetail[detail.id]) state.lineItemsByDetail[detail.id] = [];
