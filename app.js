@@ -85,6 +85,25 @@ function loadState() {
   }
   if (!parsed.globalCatalog.exchangeRates) parsed.globalCatalog.exchangeRates = { usd: 1, eur: 1 };
 
+  parsed.proposals.forEach((proposal) => {
+    Object.keys(proposal.data.lineItemsByDetail).forEach((detailId) => {
+      proposal.data.lineItemsByDetail[detailId] = proposal.data.lineItemsByDetail[detailId].map((line) => {
+        if (line.snapshot) return line;
+        const catalog = parsed.globalCatalog.materialCatalog.find((m) => m.id === line.catalogMaterialId);
+        if (!catalog) return line;
+        return {
+          ...line,
+          snapshot: {
+            listPrice: Number(catalog.listPrice || 0),
+            currency: catalog.currency || 'TRY',
+            discount: Number(catalog.discount || 0),
+            laborUnitPrice: Number(catalog.laborUnitPrice || 0),
+          },
+        };
+      });
+    });
+  });
+
   return parsed;
 }
 function saveState() {
@@ -1153,11 +1172,13 @@ function showMaterialsView(options = {}) {
       btn.addEventListener('click', () => {
         if (!confirm('Silmek istiyor musunuz?')) return;
         const materialId = btn.dataset.deleteMaterial;
-        getMaterialCatalog() = getMaterialCatalog().filter((m) => m.id !== materialId);
-        Object.keys(getData().lineItemsByDetail).forEach((detailId) => {
-          getData().lineItemsByDetail[detailId] = getData().lineItemsByDetail[detailId].filter(
-            (line) => line.catalogMaterialId !== materialId,
-          );
+        getGlobalCatalog().materialCatalog = getMaterialCatalog().filter((m) => m.id !== materialId);
+        state.proposals.forEach((proposal) => {
+          Object.keys(proposal.data.lineItemsByDetail).forEach((detailId) => {
+            proposal.data.lineItemsByDetail[detailId] = proposal.data.lineItemsByDetail[detailId].filter(
+              (line) => line.catalogMaterialId !== materialId,
+            );
+          });
         });
         saveState();
         renderAutoCompleteLists();
