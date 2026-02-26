@@ -19,9 +19,9 @@ body {
 }
 
 header {
-  background: #fff;
+  background: var(--primary);
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--primary);
 }
 
 h1,
@@ -29,6 +29,10 @@ h2,
 h3,
 h4 {
   margin: 0.2rem 0;
+}
+
+header h1 {
+  color: #fff;
 }
 
 .top-nav-layout {
