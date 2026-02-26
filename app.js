@@ -679,32 +679,7 @@ function exportProposalToWord() {
     return;
   }
 
-  const escapeHtml = (value) =>
-    String(value || '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-
   const logoDataUrl = state.wordLogoDataUrl || getDefaultWordLogoDataUrl();
-
-  const groups = getData().plumbingGroups;
-  const total = groups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
-  const vat = total * 0.2;
-  const totalWithVat = total + vat;
-
-  const groupRows = groups
-    .map(
-      (group) => `
-        <tr>
-          <td>${escapeHtml(group.name)}</td>
-          <td class="right">${formatMoney(getGroupTotal(group.id))}</td>
-        </tr>`,
-    )
-    .join('');
-
-  const exportDate = new Date().toLocaleDateString('tr-TR');
 
   const html = `<!doctype html>
 <html>
@@ -712,59 +687,44 @@ function exportProposalToWord() {
   <meta charset="UTF-8" />
   <title>Teklif Formu</title>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 32px; font-size: 14px; }
-    .header { width: 100%; border-collapse: collapse; }
-    .header td { vertical-align: top; }
-    .title { text-align: center; font-size: 28px; font-weight: 700; }
-    .logo-wrap { text-align: right; }
-    .customer { margin-top: 30px; font-size: 16px; line-height: 1.9; }
-    .line { display: inline-block; min-width: 330px; border-bottom: 1px solid #666; padding-bottom: 2px; }
-    .main-table { width: 100%; border-collapse: collapse; margin-top: 24px; }
-    .main-table th, .main-table td { border: 1px solid #777; padding: 8px; }
-    .main-table th { background: #f2f2f2; }
-    .right { text-align: right; }
-    .section-title { margin-top: 26px; font-size: 18px; font-weight: 700; }
-    .general-list { margin-top: 10px; line-height: 1.8; font-size: 15px; }
+    @page { size: A4; margin: 0; }
+    body {
+      margin: 0;
+      background: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #111;
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 22mm 18mm;
+      box-sizing: border-box;
+      position: relative;
+    }
+    .logo-wrap {
+      width: 100%;
+      text-align: right;
+      margin-top: 4mm;
+    }
+    .logo-wrap img {
+      width: 46mm;
+      height: auto;
+    }
+    .title {
+      text-align: center;
+      margin-top: 34mm;
+      font-size: 30px;
+      letter-spacing: 0.8px;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
-  <table class="header">
-    <tr>
-      <td style="width:30%"></td>
-      <td class="title" style="width:40%">Teklif Formu</td>
-      <td class="logo-wrap" style="width:30%"><img src="${logoDataUrl}" alt="CTS Mühendislik" style="width:260px; max-width:100%;" /></td>
-    </tr>
-  </table>
-
-  <div class="customer">
-    <div><strong>Müşteri İsmi:</strong> <span class="line">${escapeHtml(proposal.firmName || '')}</span></div>
-    <div><strong>Vergi No:</strong> <span class="line">&nbsp;</span></div>
-    <div><strong>İlgili Kişi:</strong> <span class="line">&nbsp;</span></div>
-    <div><strong>İrtibat:</strong> <span class="line">&nbsp;</span></div>
-    <div><strong>Tarih:</strong> <span class="line">${exportDate}</span></div>
-  </div>
-
-  <table class="main-table">
-    <thead>
-      <tr>
-        <th>Tesisat Grubu</th>
-        <th class="right">Tutar</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${groupRows || '<tr><td colspan="2">Henüz tesisat grubu yok.</td></tr>'}
-    </tbody>
-    <tfoot>
-      <tr><td><strong>Genel Toplam</strong></td><td class="right"><strong>${formatMoney(total)}</strong></td></tr>
-      <tr><td><strong>KDV Tutarı (%20)</strong></td><td class="right"><strong>${formatMoney(vat)}</strong></td></tr>
-      <tr><td><strong>KDV Dahil Toplam Tutar</strong></td><td class="right"><strong>${formatMoney(totalWithVat)}</strong></td></tr>
-    </tfoot>
-  </table>
-
-  <div class="section-title">Genel Hususlar</div>
-  <div class="general-list">
-    <div>1.) Ödeme Şekli:</div>
-    <div>2.) KDV. Dahildir.</div>
+  <div class="page">
+    <div class="logo-wrap">
+      <img src="${logoDataUrl}" alt="CTS Mühendislik" />
+    </div>
+    <div class="title">TEKLİF FORMU</div>
   </div>
 </body>
 </html>`;
