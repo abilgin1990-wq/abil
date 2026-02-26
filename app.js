@@ -15,7 +15,8 @@ const views = {
 
 document.getElementById('navQuotes').addEventListener('click', () => showQuotesView());
 document.getElementById('navCatalog').addEventListener('click', () => showCatalogView());
-document.getElementById('navMain').addEventListener('click', () => showMainView());
+const navMainButton = document.getElementById('navMain');
+if (navMainButton) navMainButton.addEventListener('click', () => showMainView());
 document.getElementById('navMaterials').addEventListener('click', () => showMaterialsView());
 
 showQuotesView();
@@ -750,7 +751,7 @@ function showGroupView() {
 
   views.group.innerHTML = `
     <div class="card">
-      <div class="actions"><button id="backToMain">← Teklif Ana Kalemlerine Dön</button></div>
+      <div class="actions"><button id="backToMain" class="prominent-back">← Teklif Ana Kalemlerine Dön</button></div>
       <h2>${group.name} Tesisat Grubu</h2>
       <form id="detailForm" class="grid">
         <label>İş Detayı Grubu
@@ -871,7 +872,7 @@ function showDetailView() {
 
   views.detail.innerHTML = `
     <div class="card">
-      <div class="actions"><button id="backToGroup">← ${group.name} grubuna dön</button></div>
+      <div class="actions"><button id="backToGroup" class="prominent-back">← ${group.name} grubuna dön</button></div>
       <h2>${detail.name} İş Detayı</h2>
       <form id="lineForm" class="grid">
         <label>Malzeme
