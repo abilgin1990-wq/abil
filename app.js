@@ -560,7 +560,7 @@ function showMainView() {
 
   views.main.innerHTML = `
     <div class="card">
-      <h2>Ana Form</h2>
+      <h2>Teklif Ana Kalemleri</h2>
       <p class="small"><b>Firma:</b> ${activeProposal.firmName} | <b>Proje:</b> ${activeProposal.projectName}</p>
       <p class="small">Sadece Tesisat Grubu, Tutarı ve Detayı görüntülenir.</p>
       <form id="groupForm" class="grid">
@@ -678,7 +678,7 @@ function showGroupView() {
 
   views.group.innerHTML = `
     <div class="card">
-      <div class="actions"><button id="backToMain">← Ana Forma Dön</button></div>
+      <div class="actions"><button id="backToMain">← Teklif Ana Kalemlerine Dön</button></div>
       <h2>${group.name} Tesisat Grubu</h2>
       <p class="small">İş Detayı, toplam tutar ve detay görüntülenir.</p>
       <form id="detailForm" class="grid">
