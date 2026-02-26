@@ -449,7 +449,7 @@ function showDetailView() {
   });
 }
 
-function showMaterialsView() {
+function showMaterialsView(options = {}) {
   showView('materials');
 
   const groupOptions = state.plumbingGroups
@@ -476,16 +476,16 @@ function showMaterialsView() {
           <input id="materialNameInput" name="name" required placeholder="Örn. Lavabo" />
         </label>
         <label>Marka
-          <input name="brand" required placeholder="Örn. ECA" />
+          <input id="materialBrandInput" name="brand" required placeholder="Örn. ECA" />
         </label>
         <label>Liste Fiyatı
-          <input type="number" step="0.01" min="0" name="listPrice" required />
+          <input id="materialListPriceInput" type="number" step="0.01" min="0" name="listPrice" required />
         </label>
         <label>İskonto (%)
-          <input type="number" step="0.01" min="0" max="100" name="discount" required value="0" />
+          <input id="materialDiscountInput" type="number" step="0.01" min="0" max="100" name="discount" required value="0" />
         </label>
         <label>İşçilik Fiyatı
-          <input type="number" step="0.01" min="0" name="laborUnitPrice" required value="0" />
+          <input id="materialLaborInput" type="number" step="0.01" min="0" name="laborUnitPrice" required value="0" />
         </label>
         <label style="align-self:end;">
           <button class="primary" type="submit">Ekle</button>
@@ -509,26 +509,41 @@ function showMaterialsView() {
   const groupSelect = document.getElementById('materialGroupSelect');
   const detailSelect = document.getElementById('materialDetailSelect');
   const materialNameInput = document.getElementById('materialNameInput');
+  const materialBrandInput = document.getElementById('materialBrandInput');
+  const materialListPriceInput = document.getElementById('materialListPriceInput');
+  const materialDiscountInput = document.getElementById('materialDiscountInput');
+  const materialLaborInput = document.getElementById('materialLaborInput');
   const tableBody = document.getElementById('materialsTableBody');
 
   const fillDetails = () => {
     const details = state.jobDetails.filter((d) => d.groupId === groupSelect.value);
+    const previousDetailValue = detailSelect.value;
     detailSelect.innerHTML = `
       <option value="">Seçiniz</option>
       ${details.map((d) => `<option value="${d.id}">${d.name}</option>`).join('')}
     `;
+
+    const hasPrevious = details.some((d) => d.id === previousDetailValue);
+    const desiredValue = options.selectedDetailId || previousDetailValue;
+    if (desiredValue && details.some((d) => d.id === desiredValue)) {
+      detailSelect.value = desiredValue;
+    } else if (hasPrevious) {
+      detailSelect.value = previousDetailValue;
+    }
   };
 
   const getFilteredMaterials = () => {
     const selectedGroupId = groupSelect.value;
     const selectedDetailId = detailSelect.value;
     const nameQuery = materialNameInput.value.trim().toLowerCase();
+    const brandQuery = materialBrandInput.value.trim().toLowerCase();
 
     return state.materialCatalog.filter((m) => {
       const groupMatch = !selectedGroupId || m.groupId === selectedGroupId;
       const detailMatch = !selectedDetailId || m.jobDetailId === selectedDetailId;
       const nameMatch = !nameQuery || m.name.toLowerCase().includes(nameQuery);
-      return groupMatch && detailMatch && nameMatch;
+      const brandMatch = !brandQuery || m.brand.toLowerCase().includes(brandQuery);
+      return groupMatch && detailMatch && nameMatch && brandMatch;
     });
   };
 
@@ -624,6 +639,7 @@ function showMaterialsView() {
   });
   detailSelect.addEventListener('change', renderMaterialsTable);
   materialNameInput.addEventListener('input', renderMaterialsTable);
+  materialBrandInput.addEventListener('input', renderMaterialsTable);
 
   document.getElementById('materialForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -654,9 +670,27 @@ function showMaterialsView() {
     });
 
     saveState();
-    showMaterialsView();
+    showMaterialsView({
+      selectedGroupId: groupId,
+      selectedDetailId: jobDetailId,
+      name,
+      brand,
+      listPrice: String(fd.get('listPrice')),
+      discount: String(fd.get('discount')),
+      laborUnitPrice: String(fd.get('laborUnitPrice')),
+    });
   });
 
+  if (options.selectedGroupId) {
+    groupSelect.value = options.selectedGroupId;
+  }
   fillDetails();
+
+  materialNameInput.value = options.name || '';
+  materialBrandInput.value = options.brand || '';
+  materialListPriceInput.value = options.listPrice || '';
+  materialDiscountInput.value = options.discount || '0';
+  materialLaborInput.value = options.laborUnitPrice || '0';
+
   renderMaterialsTable();
 }
