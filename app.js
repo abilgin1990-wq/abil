@@ -487,6 +487,18 @@ function showCatalogView() {
     const groupId = String(fd.get('groupId'));
     const detailName = String(fd.get('detailName')).trim();
     if (!groupId || !detailName) return;
+
+    const normalizedDetailName = detailName.toLocaleLowerCase('tr-TR');
+    const hasDuplicate = global.jobDetails.some(
+      (detail) =>
+        detail.groupId === groupId && detail.name.trim().toLocaleLowerCase('tr-TR') === normalizedDetailName,
+    );
+
+    if (hasDuplicate) {
+      alert('Aynı isimde iş detayı var.');
+      return;
+    }
+
     global.jobDetails.push({
       id: uid('det'),
       groupId,
