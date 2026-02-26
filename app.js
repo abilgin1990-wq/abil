@@ -395,6 +395,63 @@ function downloadCsvFile(filename, headers, rows) {
   URL.revokeObjectURL(url);
 }
 
+function exportProposalToWord() {
+  const proposal = getActiveProposal();
+  if (!proposal) {
+    alert('Önce bir teklif seçiniz.');
+    return;
+  }
+
+  const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120">
+    <rect width="420" height="120" fill="white"/>
+    <circle cx="45" cy="58" r="30" fill="none" stroke="#e0302a" stroke-width="12"/>
+    <text x="90" y="70" font-family="Arial, Helvetica, sans-serif" font-size="52" font-style="italic" font-weight="700" fill="#1e1f24">CTS</text>
+    <text x="91" y="96" font-family="Arial, Helvetica, sans-serif" font-size="28" font-style="italic" font-weight="700" fill="#1e1f24">mühendislik</text>
+  </svg>`;
+  const logoDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(logoSvg)}`;
+
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Teklif Formu</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 32px; }
+    .header { width: 100%; }
+    .header td { vertical-align: top; }
+    .title { text-align: center; font-size: 28px; font-weight: 700; }
+    .logo-wrap { text-align: right; }
+    .customer { margin-top: 42px; font-size: 16px; line-height: 1.9; }
+    .line { display: inline-block; min-width: 330px; border-bottom: 1px solid #666; padding-bottom: 2px; }
+  </style>
+</head>
+<body>
+  <table class="header">
+    <tr>
+      <td style="width:30%"></td>
+      <td class="title" style="width:40%">Teklif Formu</td>
+      <td class="logo-wrap" style="width:30%"><img src="${logoDataUrl}" alt="CTS Mühendislik" style="width:260px; max-width:100%;" /></td>
+    </tr>
+  </table>
+
+  <div class="customer">
+    <div><strong>Müşteri İsmi:</strong> <span class="line">${proposal.firmName || ''}</span></div>
+    <div><strong>Vergi No:</strong> <span class="line">&nbsp;</span></div>
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob(['﻿', html], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `teklif-formu-${(proposal.firmName || 'musteri').replace(/\s+/g, '-').toLowerCase()}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function exportMainToExcel() {
   const headers = ['Tesisat Grubu', 'Tutar'];
   const rows = getData().plumbingGroups.map((g) => [
@@ -767,6 +824,9 @@ function showMainView() {
         <label style="align-self:end;">
           <button id="exportDetailedExcel" type="button">Detaylı Excele Aktar</button>
         </label>
+        <label style="align-self:end;">
+          <button id="exportWordTemplate" type="button">Teklifi Word Olarak Oluştur</button>
+        </label>
       </form>
       <datalist id="materialNameSuggestions"></datalist>
       <datalist id="materialBrandSuggestions"></datalist>
@@ -808,6 +868,7 @@ function showMainView() {
   const groupForm = document.getElementById('groupForm');
   document.getElementById('exportMainExcel').addEventListener('click', exportMainToExcel);
   document.getElementById('exportDetailedExcel').addEventListener('click', exportDetailedToExcel);
+  document.getElementById('exportWordTemplate').addEventListener('click', exportProposalToWord);
 
   groupForm.addEventListener('submit', (e) => {
     e.preventDefault();
