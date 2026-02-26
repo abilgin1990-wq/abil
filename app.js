@@ -3,6 +3,7 @@ const storageKey = 'teklif_hazirlama_data_v1';
 const state = loadState();
 let currentGroupId = null;
 let currentDetailId = null;
+let storageDirectoryHandle = null;
 
 const views = {
   quotes: document.getElementById('quotesView'),
@@ -18,8 +19,30 @@ document.getElementById('navCatalog').addEventListener('click', () => showCatalo
 const navMainButton = document.getElementById('navMain');
 if (navMainButton) navMainButton.addEventListener('click', () => showMainView());
 document.getElementById('navMaterials').addEventListener('click', () => showMaterialsView());
+document.getElementById('selectStorageDir').addEventListener('click', selectStorageDirectory);
 
 showQuotesView();
+
+async function selectStorageDirectory() {
+  if (!window.showDirectoryPicker) {
+    alert('Tarayıcınız dizine kayıt özelliğini desteklemiyor. Chromium tabanlı tarayıcı kullanınız.');
+    return;
+  }
+
+  storageDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+  await writeStateToDirectory();
+  alert('Kayıt dizini seçildi. Veriler bu dizindeki teklif_hazirlama_data.json dosyasına da yazılacak.');
+}
+
+async function writeStateToDirectory() {
+  if (!storageDirectoryHandle) return;
+  const fileHandle = await storageDirectoryHandle.getFileHandle('teklif_hazirlama_data.json', {
+    create: true,
+  });
+  const writable = await fileHandle.createWritable();
+  await writable.write(JSON.stringify(state, null, 2));
+  await writable.close();
+}
 
 function loadState() {
   const raw = localStorage.getItem(storageKey);
@@ -113,6 +136,12 @@ function saveState() {
     active.updatedAt = new Date().toISOString();
   }
   localStorage.setItem(storageKey, JSON.stringify(state));
+  if (storageDirectoryHandle) {
+    writeStateToDirectory().catch(() => {
+      alert('Seçili dizine kayıt yapılamadı. Dizin iznini tekrar veriniz.');
+      storageDirectoryHandle = null;
+    });
+  }
 }
 
 function getActiveProposal() {
