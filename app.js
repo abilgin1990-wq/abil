@@ -323,7 +323,7 @@ function showQuotesView() {
         <td>${p.projectName}</td>
         <td class="right">${formatMoney(total)}</td>
         <td>${new Date(p.updatedAt).toLocaleString('tr-TR')}</td>
-        <td><button data-open-proposal="${p.id}">Teklifi Gör</button></td>
+        <td><div class="actions"><button data-open-proposal="${p.id}">Teklifi Gör</button><button class="danger" data-delete-proposal="${p.id}">Sil</button></div></td>
       </tr>`;
     })
     .join('');
@@ -376,6 +376,19 @@ function showQuotesView() {
     btn.addEventListener('click', () => {
       state.activeProposalId = btn.dataset.openProposal;
       showMainView();
+    });
+  });
+
+  views.quotes.querySelectorAll('[data-delete-proposal]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!confirm('Silmek istediğinize emin misiniz?')) return;
+      const proposalId = btn.dataset.deleteProposal;
+      state.proposals = state.proposals.filter((proposal) => proposal.id !== proposalId);
+      if (state.activeProposalId === proposalId) {
+        state.activeProposalId = state.proposals[0]?.id || null;
+      }
+      saveState();
+      showQuotesView();
     });
   });
 }
