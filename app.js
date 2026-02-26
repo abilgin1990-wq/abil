@@ -635,7 +635,6 @@ function showMainView() {
     <div class="card">
       <h2>Teklif Ana Kalemleri</h2>
       <p class="small"><b>Firma:</b> ${activeProposal.firmName} | <b>Proje:</b> ${activeProposal.projectName}</p>
-      <p class="small">Sadece Tesisat Grubu, Tutarı ve Detayı görüntülenir.</p>
       <form id="groupForm" class="grid">
         <label>Tesisat Grubu
           <select name="groupId" required>
@@ -753,7 +752,6 @@ function showGroupView() {
     <div class="card">
       <div class="actions"><button id="backToMain">← Teklif Ana Kalemlerine Dön</button></div>
       <h2>${group.name} Tesisat Grubu</h2>
-      <p class="small">İş Detayı, toplam tutar ve detay görüntülenir.</p>
       <form id="detailForm" class="grid">
         <label>İş Detayı Grubu
           <select name="detailId" required>
@@ -875,7 +873,6 @@ function showDetailView() {
     <div class="card">
       <div class="actions"><button id="backToGroup">← ${group.name} grubuna dön</button></div>
       <h2>${detail.name} İş Detayı</h2>
-      <p class="small">Malzeme, marka, adet, liste fiyat, iskonto ve işçilikten toplam tutar otomatik hesaplanır.</p>
       <form id="lineForm" class="grid">
         <label>Malzeme
           <select id="lineMaterialName" name="materialName" required>
