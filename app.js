@@ -272,6 +272,7 @@ function loadState() {
       proposals: [],
       activeProposalId: null,
       globalCatalog: { plumbingGroups: [], jobDetails: [], materialCatalog: [], exchangeRates: { usd: 1, eur: 1 } },
+      wordLogoDataUrl: '',
     };
   }
 
@@ -301,6 +302,7 @@ function loadState() {
         materialCatalog: migratedProposal.data.materialCatalog || [],
         exchangeRates: migratedProposal.data.exchangeRates || { usd: 1, eur: 1 },
       },
+      wordLogoDataUrl: '',
     };
   }
 
@@ -329,6 +331,7 @@ function loadState() {
     };
   }
   if (!parsed.globalCatalog.exchangeRates) parsed.globalCatalog.exchangeRates = { usd: 1, eur: 1 };
+  if (typeof parsed.wordLogoDataUrl !== 'string') parsed.wordLogoDataUrl = '';
 
   parsed.proposals.forEach((proposal) => {
     Object.keys(proposal.data.lineItemsByDetail).forEach((detailId) => {
@@ -659,6 +662,16 @@ function downloadCsvFile(filename, headers, rows) {
   URL.revokeObjectURL(url);
 }
 
+function getDefaultWordLogoDataUrl() {
+  const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120">
+    <rect width="420" height="120" fill="white"/>
+    <circle cx="45" cy="58" r="30" fill="none" stroke="#e0302a" stroke-width="12"/>
+    <text x="90" y="70" font-family="Arial, Helvetica, sans-serif" font-size="52" font-style="italic" font-weight="700" fill="#1e1f24">CTS</text>
+    <text x="91" y="96" font-family="Arial, Helvetica, sans-serif" font-size="28" font-style="italic" font-weight="700" fill="#1e1f24">mühendislik</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(logoSvg)}`;
+}
+
 function exportProposalToWord() {
   const proposal = getActiveProposal();
   if (!proposal) {
@@ -674,13 +687,7 @@ function exportProposalToWord() {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
 
-  const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120">
-    <rect width="420" height="120" fill="white"/>
-    <circle cx="45" cy="58" r="30" fill="none" stroke="#e0302a" stroke-width="12"/>
-    <text x="90" y="70" font-family="Arial, Helvetica, sans-serif" font-size="52" font-style="italic" font-weight="700" fill="#1e1f24">CTS</text>
-    <text x="91" y="96" font-family="Arial, Helvetica, sans-serif" font-size="28" font-style="italic" font-weight="700" fill="#1e1f24">mühendislik</text>
-  </svg>`;
-  const logoDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(logoSvg)}`;
+  const logoDataUrl = state.wordLogoDataUrl || getDefaultWordLogoDataUrl();
 
   const groups = getData().plumbingGroups;
   const total = groups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
@@ -1148,6 +1155,11 @@ function showMainView() {
         <label style="align-self:end;">
           <button id="exportWordTemplate" type="button">Teklifi Word Olarak Oluştur</button>
         </label>
+        <label style="align-self:end;">
+          <button id="uploadWordLogo" type="button">Word Logosu Yükle</button>
+        </label>
+        <input id="wordLogoInput" type="file" accept="image/*" style="display:none" />
+        <span class="small">Word logosu: ${state.wordLogoDataUrl ? 'Yüklü özel görsel' : 'Varsayılan görsel'}</span>
       </form>
       <datalist id="materialNameSuggestions"></datalist>
       <datalist id="materialBrandSuggestions"></datalist>
@@ -1190,6 +1202,18 @@ function showMainView() {
   document.getElementById('exportMainExcel').addEventListener('click', exportMainToExcel);
   document.getElementById('exportDetailedExcel').addEventListener('click', exportDetailedToExcel);
   document.getElementById('exportWordTemplate').addEventListener('click', exportProposalToWord);
+  document.getElementById('uploadWordLogo').addEventListener('click', () => document.getElementById('wordLogoInput').click());
+  document.getElementById('wordLogoInput').addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      state.wordLogoDataUrl = String(reader.result || '');
+      saveState();
+      showMainView();
+    };
+    reader.readAsDataURL(file);
+  });
 
   groupForm.addEventListener('submit', (e) => {
     e.preventDefault();
