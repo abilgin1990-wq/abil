@@ -1109,10 +1109,7 @@ function showMaterialsView(options = {}) {
     const nameOptions = [...new Set(scopedMaterials.map((m) => m.name))]
       .filter((name) => !typedName || name.toLowerCase().includes(typedName));
 
-    const brandPool = scopedMaterials.filter(
-      (m) => !typedName || m.name.toLowerCase().includes(typedName),
-    );
-    const brandOptions = [...new Set(brandPool.map((m) => m.brand))]
+    const brandOptions = [...new Set(scopedMaterials.map((m) => m.brand))]
       .filter((brand) => !typedBrand || brand.toLowerCase().includes(typedBrand));
 
     materialNameSuggestions.innerHTML = nameOptions
