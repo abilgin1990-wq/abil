@@ -1155,11 +1155,6 @@ function showMainView() {
         <label style="align-self:end;">
           <button id="exportWordTemplate" type="button">Teklifi Word Olarak Oluştur</button>
         </label>
-        <label style="align-self:end;">
-          <button id="uploadWordLogo" type="button">Word Logosu Yükle</button>
-        </label>
-        <input id="wordLogoInput" type="file" accept="image/*" style="display:none" />
-        <span class="small">Word logosu: ${state.wordLogoDataUrl ? 'Yüklü özel görsel' : 'Varsayılan görsel'}</span>
       </form>
       <datalist id="materialNameSuggestions"></datalist>
       <datalist id="materialBrandSuggestions"></datalist>
@@ -1202,18 +1197,6 @@ function showMainView() {
   document.getElementById('exportMainExcel').addEventListener('click', exportMainToExcel);
   document.getElementById('exportDetailedExcel').addEventListener('click', exportDetailedToExcel);
   document.getElementById('exportWordTemplate').addEventListener('click', exportProposalToWord);
-  document.getElementById('uploadWordLogo').addEventListener('click', () => document.getElementById('wordLogoInput').click());
-  document.getElementById('wordLogoInput').addEventListener('change', (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      state.wordLogoDataUrl = String(reader.result || '');
-      saveState();
-      showMainView();
-    };
-    reader.readAsDataURL(file);
-  });
 
   groupForm.addEventListener('submit', (e) => {
     e.preventDefault();
