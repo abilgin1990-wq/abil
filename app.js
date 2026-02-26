@@ -5,39 +5,180 @@ let currentGroupId = null;
 let currentDetailId = null;
 
 const views = {
+  quotes: document.getElementById('quotesView'),
   main: document.getElementById('mainView'),
   group: document.getElementById('groupView'),
   detail: document.getElementById('detailView'),
   materials: document.getElementById('materialsView'),
 };
 
+document.getElementById('navQuotes').addEventListener('click', () => showQuotesView());
 document.getElementById('navMain').addEventListener('click', () => showMainView());
 document.getElementById('navMaterials').addEventListener('click', () => showMaterialsView());
 
-showMainView();
+showQuotesView();
 
 function loadState() {
   const raw = localStorage.getItem(storageKey);
   if (!raw) {
     return {
-      plumbingGroups: [],
-      jobDetails: [],
-      materialCatalog: [],
-      lineItemsByDetail: {},
-      exchangeRates: { usd: 1, eur: 1 },
+      proposals: [],
+      activeProposalId: null,
     };
   }
+
   const parsed = JSON.parse(raw);
-  if (!parsed.exchangeRates) parsed.exchangeRates = { usd: 1, eur: 1 };
-  if (typeof parsed.exchangeRates.usd !== 'number') parsed.exchangeRates.usd = 1;
-  if (typeof parsed.exchangeRates.eur !== 'number') parsed.exchangeRates.eur = 1;
+
+  if (!parsed.proposals) {
+    const migratedProposal = {
+      id: uid('prp'),
+      firmName: 'Varsayılan Firma',
+      projectName: 'Varsayılan Proje',
+      updatedAt: new Date().toISOString(),
+      data: {
+        plumbingGroups: parsed.plumbingGroups || [],
+        jobDetails: parsed.jobDetails || [],
+        materialCatalog: parsed.materialCatalog || [],
+        lineItemsByDetail: parsed.lineItemsByDetail || {},
+        exchangeRates: parsed.exchangeRates || { usd: 1, eur: 1 },
+      },
+    };
+
+    return {
+      proposals: [migratedProposal],
+      activeProposalId: migratedProposal.id,
+    };
+  }
+
+  parsed.proposals.forEach((proposal) => {
+    if (!proposal.data) proposal.data = {};
+    if (!proposal.data.plumbingGroups) proposal.data.plumbingGroups = [];
+    if (!proposal.data.jobDetails) proposal.data.jobDetails = [];
+    if (!proposal.data.materialCatalog) proposal.data.materialCatalog = [];
+    if (!proposal.data.lineItemsByDetail) proposal.data.lineItemsByDetail = {};
+    if (!proposal.data.exchangeRates) proposal.data.exchangeRates = { usd: 1, eur: 1 };
+    if (typeof proposal.data.exchangeRates.usd !== 'number') proposal.data.exchangeRates.usd = 1;
+    if (typeof proposal.data.exchangeRates.eur !== 'number') proposal.data.exchangeRates.eur = 1;
+    if (!proposal.updatedAt) proposal.updatedAt = new Date().toISOString();
+  });
+
+  if (!parsed.activeProposalId && parsed.proposals[0]) {
+    parsed.activeProposalId = parsed.proposals[0].id;
+  }
+
   return parsed;
 }
-
 function saveState() {
+  const active = getActiveProposal();
+  if (active) {
+    active.updatedAt = new Date().toISOString();
+  }
   localStorage.setItem(storageKey, JSON.stringify(state));
 }
 
+function getActiveProposal() {
+  return state.proposals.find((p) => p.id === state.activeProposalId) || null;
+}
+
+function getData() {
+  const proposal = getActiveProposal();
+  if (!proposal) return null;
+  return proposal.data;
+}
+
+function createEmptyProposalData() {
+  return {
+    plumbingGroups: [],
+    jobDetails: [],
+    materialCatalog: [],
+    lineItemsByDetail: {},
+    exchangeRates: { usd: 1, eur: 1 },
+  };
+}
+
+function showQuotesView() {
+  showView('quotes');
+
+  const rows = state.proposals
+    .map((p) => {
+      const total = getProposalTotal(p);
+      return `<tr>
+        <td>${p.firmName}</td>
+        <td>${p.projectName}</td>
+        <td class="right">${formatMoney(total)}</td>
+        <td>${new Date(p.updatedAt).toLocaleString('tr-TR')}</td>
+        <td><button data-open-proposal="${p.id}">Teklifi Gör</button></td>
+      </tr>`;
+    })
+    .join('');
+
+  views.quotes.innerHTML = `
+    <div class="card">
+      <h2>Teklifler</h2>
+      <form id="proposalForm" class="grid">
+        <label>Teklifin Verileceği Firma
+          <input name="firmName" required placeholder="Firma adı" />
+        </label>
+        <label>Proje İsmi
+          <input name="projectName" required placeholder="Proje adı" />
+        </label>
+        <label style="align-self:end;">
+          <button class="primary" type="submit">Teklif Ekle</button>
+        </label>
+      </form>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Firma</th><th>Proje</th><th class="right">Toplam Tutar</th><th>Son Güncelleme</th><th>İşlem</th></tr>
+        </thead>
+        <tbody>
+          ${rows || '<tr><td colspan="5">Henüz teklif yok.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('proposalForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const proposal = {
+      id: uid('prp'),
+      firmName: String(fd.get('firmName')).trim(),
+      projectName: String(fd.get('projectName')).trim(),
+      updatedAt: new Date().toISOString(),
+      data: createEmptyProposalData(),
+    };
+    state.proposals.push(proposal);
+    state.activeProposalId = proposal.id;
+    saveState();
+    showQuotesView();
+  });
+
+  views.quotes.querySelectorAll('[data-open-proposal]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.activeProposalId = btn.dataset.openProposal;
+      showMainView();
+    });
+  });
+}
+
+function getProposalTotal(proposal) {
+  const data = proposal.data;
+  const detailTotal = (detailId) => {
+    const lines = data.lineItemsByDetail[detailId] || [];
+    return lines.reduce((sum, line) => {
+      const catalog = data.materialCatalog.find((m) => m.id === line.catalogMaterialId);
+      if (!catalog) return sum;
+      const unitMaterial = calcMaterialUnitPriceForData(catalog, data);
+      const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
+      return sum + unitMaterial * line.quantity + laborUnitPrice * line.quantity;
+    }, 0);
+  };
+
+  return data.jobDetails.reduce((sum, d) => sum + detailTotal(d.id), 0);
+}
 function uid(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -70,15 +211,26 @@ function formatListPriceWithCurrency(catalogMaterial) {
 
 function toTryAmount(amount, currency) {
   const value = Number(amount || 0);
-  if (currency === 'USD') return value * Number(state.exchangeRates.usd || 1);
-  if (currency === 'EUR') return value * Number(state.exchangeRates.eur || 1);
+  if (currency === 'USD') return value * Number(getData().exchangeRates.usd || 1);
+  if (currency === 'EUR') return value * Number(getData().exchangeRates.eur || 1);
   return value;
 }
 
+function calcMaterialUnitPriceForData(catalogMaterial, data) {
+  const value = Number(catalogMaterial.listPrice || 0);
+  const currency = catalogMaterial.currency || 'TRY';
+  const listPriceTry = currency === 'USD'
+    ? value * Number(data.exchangeRates.usd || 1)
+    : currency === 'EUR'
+      ? value * Number(data.exchangeRates.eur || 1)
+      : value;
+  return listPriceTry * (1 - catalogMaterial.discount / 100);
+}
+
 function getDetailTotal(detailId) {
-  const lines = state.lineItemsByDetail[detailId] || [];
+  const lines = getData().lineItemsByDetail[detailId] || [];
   return lines.reduce((sum, line) => {
-    const catalog = state.materialCatalog.find((m) => m.id === line.catalogMaterialId);
+    const catalog = getData().materialCatalog.find((m) => m.id === line.catalogMaterialId);
     if (!catalog) return sum;
     const unitMaterial = calcMaterialUnitPrice(catalog);
     const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
@@ -89,7 +241,7 @@ function getDetailTotal(detailId) {
 }
 
 function getGroupTotal(groupId) {
-  return state.jobDetails
+  return getData().jobDetails
     .filter((d) => d.groupId === groupId)
     .reduce((sum, d) => sum + getDetailTotal(d.id), 0);
 }
@@ -97,12 +249,12 @@ function getGroupTotal(groupId) {
 
 function exportMainToExcel() {
   const headers = ['Tesisat Grubu', 'Tutar', 'Detay'];
-  const rows = state.plumbingGroups.map((g) => [
+  const rows = getData().plumbingGroups.map((g) => [
     g.name,
     Number(getGroupTotal(g.id)).toFixed(2),
     (g.description || '').replaceAll('\n', ' '),
   ]);
-  const grandTotal = state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
+  const grandTotal = getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
   rows.push(['GENEL TOPLAM', Number(grandTotal).toFixed(2), '']);
 
   const csv = [headers, ...rows]
@@ -120,9 +272,12 @@ function exportMainToExcel() {
   URL.revokeObjectURL(url);
 }
 function showMainView() {
+  const activeProposal = getActiveProposal();
+  if (!activeProposal) return showQuotesView();
+
   showView('main');
 
-  const rows = state.plumbingGroups
+  const rows = getData().plumbingGroups
     .map(
       (g) => `
       <tr>
@@ -143,6 +298,7 @@ function showMainView() {
   views.main.innerHTML = `
     <div class="card">
       <h2>Ana Form</h2>
+      <p class="small"><b>Firma:</b> ${activeProposal.firmName} | <b>Proje:</b> ${activeProposal.projectName}</p>
       <p class="small">Sadece Tesisat Grubu, Tutarı ve Detayı görüntülenir.</p>
       <form id="groupForm" class="grid">
         <label>Tesisat Grubu
@@ -178,17 +334,17 @@ function showMainView() {
         <tfoot>
           <tr>
             <td><b>Genel Toplam</b></td>
-            <td class="right total">${formatMoney(state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0))}</td>
+            <td class="right total">${formatMoney(getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0))}</td>
             <td colspan="2"></td>
           </tr>
           <tr>
             <td><b>KDV Tutarı (%20)</b></td>
-            <td class="right total">${formatMoney(state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0) * 0.2)}</td>
+            <td class="right total">${formatMoney(getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0) * 0.2)}</td>
             <td colspan="2"></td>
           </tr>
           <tr>
             <td><b>KDV Dahil Toplam Tutar</b></td>
-            <td class="right total">${formatMoney(state.plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0) * 1.2)}</td>
+            <td class="right total">${formatMoney(getData().plumbingGroups.reduce((sum, g) => sum + getGroupTotal(g.id), 0) * 1.2)}</td>
             <td colspan="2"></td>
           </tr>
         </tfoot>
@@ -202,7 +358,7 @@ function showMainView() {
   groupForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const formData = new FormData(groupForm);
-    state.plumbingGroups.push({
+    getData().plumbingGroups.push({
       id: uid('grp'),
       name: String(formData.get('name')).trim(),
       description: String(formData.get('description') || '').trim(),
@@ -220,7 +376,7 @@ function showMainView() {
 
   views.main.querySelectorAll('[data-edit-group]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const grp = state.plumbingGroups.find((g) => g.id === btn.dataset.editGroup);
+      const grp = getData().plumbingGroups.find((g) => g.id === btn.dataset.editGroup);
       const name = prompt('Tesisat Grubu adı', grp.name);
       if (name === null) return;
       const detail = prompt('Detay', grp.description || '');
@@ -236,11 +392,11 @@ function showMainView() {
     btn.addEventListener('click', () => {
       if (!confirm('Silmek istiyor musunuz?')) return;
       const groupId = btn.dataset.deleteGroup;
-      const detailIds = state.jobDetails.filter((d) => d.groupId === groupId).map((d) => d.id);
-      state.plumbingGroups = state.plumbingGroups.filter((g) => g.id !== groupId);
-      state.jobDetails = state.jobDetails.filter((d) => d.groupId !== groupId);
-      state.materialCatalog = state.materialCatalog.filter((m) => m.groupId !== groupId);
-      detailIds.forEach((id) => delete state.lineItemsByDetail[id]);
+      const detailIds = getData().jobDetails.filter((d) => d.groupId === groupId).map((d) => d.id);
+      getData().plumbingGroups = getData().plumbingGroups.filter((g) => g.id !== groupId);
+      getData().jobDetails = getData().jobDetails.filter((d) => d.groupId !== groupId);
+      getData().materialCatalog = getData().materialCatalog.filter((m) => m.groupId !== groupId);
+      detailIds.forEach((id) => delete getData().lineItemsByDetail[id]);
       saveState();
       showMainView();
     });
@@ -248,11 +404,11 @@ function showMainView() {
 }
 
 function showGroupView() {
-  const group = state.plumbingGroups.find((g) => g.id === currentGroupId);
+  const group = getData().plumbingGroups.find((g) => g.id === currentGroupId);
   if (!group) return showMainView();
 
   showView('group');
-  const details = state.jobDetails.filter((d) => d.groupId === group.id);
+  const details = getData().jobDetails.filter((d) => d.groupId === group.id);
 
   const rows = details
     .map(
@@ -312,7 +468,7 @@ function showGroupView() {
   detailForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = new FormData(detailForm);
-    state.jobDetails.push({
+    getData().jobDetails.push({
       id: uid('det'),
       groupId: group.id,
       name: String(fd.get('name')).trim(),
@@ -331,7 +487,7 @@ function showGroupView() {
 
   views.group.querySelectorAll('[data-edit-detail]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const det = state.jobDetails.find((d) => d.id === btn.dataset.editDetail);
+      const det = getData().jobDetails.find((d) => d.id === btn.dataset.editDetail);
       const name = prompt('İş Detayı adı', det.name);
       if (name === null) return;
       const desc = prompt('Detay', det.description || '');
@@ -347,9 +503,9 @@ function showGroupView() {
     btn.addEventListener('click', () => {
       if (!confirm('Silmek istiyor musunuz?')) return;
       const id = btn.dataset.deleteDetail;
-      state.jobDetails = state.jobDetails.filter((d) => d.id !== id);
-      state.materialCatalog = state.materialCatalog.filter((m) => m.jobDetailId !== id);
-      delete state.lineItemsByDetail[id];
+      getData().jobDetails = getData().jobDetails.filter((d) => d.id !== id);
+      getData().materialCatalog = getData().materialCatalog.filter((m) => m.jobDetailId !== id);
+      delete getData().lineItemsByDetail[id];
       saveState();
       showGroupView();
     });
@@ -357,19 +513,19 @@ function showGroupView() {
 }
 
 function showDetailView() {
-  const detail = state.jobDetails.find((d) => d.id === currentDetailId);
+  const detail = getData().jobDetails.find((d) => d.id === currentDetailId);
   if (!detail) return showGroupView();
 
-  const group = state.plumbingGroups.find((g) => g.id === detail.groupId);
-  const catalogForDetail = state.materialCatalog.filter((m) => m.jobDetailId === detail.id);
+  const group = getData().plumbingGroups.find((g) => g.id === detail.groupId);
+  const catalogForDetail = getData().materialCatalog.filter((m) => m.jobDetailId === detail.id);
   const materialNames = [...new Set(catalogForDetail.map((m) => m.name))];
-  const lines = state.lineItemsByDetail[detail.id] || [];
+  const lines = getData().lineItemsByDetail[detail.id] || [];
 
   showView('detail');
 
   const rowHtml = lines
     .map((line) => {
-      const catalog = state.materialCatalog.find((m) => m.id === line.catalogMaterialId);
+      const catalog = getData().materialCatalog.find((m) => m.id === line.catalogMaterialId);
       if (!catalog) return '';
       const unit = calcMaterialUnitPrice(catalog);
       const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
@@ -469,8 +625,8 @@ function showDetailView() {
       catalogMaterialId: selectedCatalogId,
       quantity: Number(fd.get('quantity')),
     };
-    if (!state.lineItemsByDetail[detail.id]) state.lineItemsByDetail[detail.id] = [];
-    state.lineItemsByDetail[detail.id].push(line);
+    if (!getData().lineItemsByDetail[detail.id]) getData().lineItemsByDetail[detail.id] = [];
+    getData().lineItemsByDetail[detail.id].push(line);
     saveState();
     showDetailView();
   });
@@ -478,7 +634,7 @@ function showDetailView() {
   views.detail.querySelectorAll('[data-delete-line]').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (!confirm('Silmek istiyor musunuz?')) return;
-      state.lineItemsByDetail[detail.id] = (state.lineItemsByDetail[detail.id] || []).filter(
+      getData().lineItemsByDetail[detail.id] = (getData().lineItemsByDetail[detail.id] || []).filter(
         (l) => l.id !== btn.dataset.deleteLine,
       );
       saveState();
@@ -490,7 +646,7 @@ function showDetailView() {
 function showMaterialsView(options = {}) {
   showView('materials');
 
-  const groupOptions = state.plumbingGroups
+  const groupOptions = getData().plumbingGroups
     .map((g) => `<option value="${g.id}">${g.name}</option>`)
     .join('');
 
@@ -500,10 +656,10 @@ function showMaterialsView(options = {}) {
       <p class="small">Tesisat Grubu ve İş Detayı seçip malzeme, marka, fiyat ve iskonto ile kayıt açın.</p>
       <div class="grid">
         <label>Dolar Kuru (TL)
-          <input id="usdRateInput" type="number" step="0.0001" min="0" value="${state.exchangeRates.usd}" />
+          <input id="usdRateInput" type="number" step="0.0001" min="0" value="${getData().exchangeRates.usd}" />
         </label>
         <label>Euro Kuru (TL)
-          <input id="eurRateInput" type="number" step="0.0001" min="0" value="${state.exchangeRates.eur}" />
+          <input id="eurRateInput" type="number" step="0.0001" min="0" value="${getData().exchangeRates.eur}" />
         </label>
       </div>
       <form id="materialForm" class="grid">
@@ -576,8 +732,8 @@ function showMaterialsView(options = {}) {
   const tableBody = document.getElementById('materialsTableBody');
 
   const saveRates = () => {
-    state.exchangeRates.usd = Number(usdRateInput.value || 1);
-    state.exchangeRates.eur = Number(eurRateInput.value || 1);
+    getData().exchangeRates.usd = Number(usdRateInput.value || 1);
+    getData().exchangeRates.eur = Number(eurRateInput.value || 1);
     saveState();
     renderAutoCompleteLists();
     renderMaterialsTable();
@@ -587,7 +743,7 @@ function showMaterialsView(options = {}) {
   eurRateInput.addEventListener('change', saveRates);
 
   const fillDetails = () => {
-    const details = state.jobDetails.filter((d) => d.groupId === groupSelect.value);
+    const details = getData().jobDetails.filter((d) => d.groupId === groupSelect.value);
     const previousDetailValue = detailSelect.value;
     detailSelect.innerHTML = `
       <option value="">Seçiniz</option>
@@ -609,7 +765,7 @@ function showMaterialsView(options = {}) {
     const typedName = materialNameInput.value.trim().toLowerCase();
     const typedBrand = materialBrandInput.value.trim().toLowerCase();
 
-    const scopedMaterials = state.materialCatalog.filter((m) => {
+    const scopedMaterials = getData().materialCatalog.filter((m) => {
       const groupMatch = !selectedGroupId || m.groupId === selectedGroupId;
       const detailMatch = !selectedDetailId || m.jobDetailId === selectedDetailId;
       return groupMatch && detailMatch;
@@ -639,7 +795,7 @@ function showMaterialsView(options = {}) {
     const nameQuery = materialNameInput.value.trim().toLowerCase();
     const brandQuery = materialBrandInput.value.trim().toLowerCase();
 
-    return state.materialCatalog.filter((m) => {
+    return getData().materialCatalog.filter((m) => {
       const groupMatch = !selectedGroupId || m.groupId === selectedGroupId;
       const detailMatch = !selectedDetailId || m.jobDetailId === selectedDetailId;
       const nameMatch = !nameQuery || m.name.toLowerCase().includes(nameQuery);
@@ -653,8 +809,8 @@ function showMaterialsView(options = {}) {
 
     const rows = filtered
       .map((m) => {
-        const grp = state.plumbingGroups.find((g) => g.id === m.groupId);
-        const det = state.jobDetails.find((d) => d.id === m.jobDetailId);
+        const grp = getData().plumbingGroups.find((g) => g.id === m.groupId);
+        const det = getData().jobDetails.find((d) => d.id === m.jobDetailId);
         return `<tr>
           <td>${grp?.name || '-'}</td>
           <td>${det?.name || '-'}</td>
@@ -681,9 +837,9 @@ function showMaterialsView(options = {}) {
       btn.addEventListener('click', () => {
         if (!confirm('Silmek istiyor musunuz?')) return;
         const materialId = btn.dataset.deleteMaterial;
-        state.materialCatalog = state.materialCatalog.filter((m) => m.id !== materialId);
-        Object.keys(state.lineItemsByDetail).forEach((detailId) => {
-          state.lineItemsByDetail[detailId] = state.lineItemsByDetail[detailId].filter(
+        getData().materialCatalog = getData().materialCatalog.filter((m) => m.id !== materialId);
+        Object.keys(getData().lineItemsByDetail).forEach((detailId) => {
+          getData().lineItemsByDetail[detailId] = getData().lineItemsByDetail[detailId].filter(
             (line) => line.catalogMaterialId !== materialId,
           );
         });
@@ -695,7 +851,7 @@ function showMaterialsView(options = {}) {
 
     views.materials.querySelectorAll('[data-edit-material]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const material = state.materialCatalog.find((m) => m.id === btn.dataset.editMaterial);
+        const material = getData().materialCatalog.find((m) => m.id === btn.dataset.editMaterial);
         if (!material) return;
 
         const name = prompt('Malzeme adı', material.name);
@@ -714,7 +870,7 @@ function showMaterialsView(options = {}) {
         const normalizedName = name.trim();
         const normalizedBrand = brand.trim();
 
-        const duplicate = state.materialCatalog.some(
+        const duplicate = getData().materialCatalog.some(
           (m) =>
             m.id !== material.id &&
             m.name.toLowerCase() === normalizedName.toLowerCase() &&
@@ -773,7 +929,7 @@ function showMaterialsView(options = {}) {
     const brand = String(fd.get('brand')).trim();
     const currency = String(fd.get('currency') || 'TRY').toUpperCase();
 
-    const duplicate = state.materialCatalog.some(
+    const duplicate = getData().materialCatalog.some(
       (m) => m.name.toLowerCase() === name.toLowerCase() && m.brand.toLowerCase() === brand.toLowerCase(),
     );
 
@@ -782,7 +938,7 @@ function showMaterialsView(options = {}) {
       return;
     }
 
-    state.materialCatalog.push({
+    getData().materialCatalog.push({
       id: uid('mat'),
       groupId,
       jobDetailId,
