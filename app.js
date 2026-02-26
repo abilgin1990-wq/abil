@@ -402,6 +402,14 @@ function exportProposalToWord() {
     return;
   }
 
+  const escapeHtml = (value) =>
+    String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+
   const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120">
     <rect width="420" height="120" fill="white"/>
     <circle cx="45" cy="58" r="30" fill="none" stroke="#e0302a" stroke-width="12"/>
@@ -410,19 +418,42 @@ function exportProposalToWord() {
   </svg>`;
   const logoDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(logoSvg)}`;
 
+  const groups = getData().plumbingGroups;
+  const total = groups.reduce((sum, g) => sum + getGroupTotal(g.id), 0);
+  const vat = total * 0.2;
+  const totalWithVat = total + vat;
+
+  const groupRows = groups
+    .map(
+      (group) => `
+        <tr>
+          <td>${escapeHtml(group.name)}</td>
+          <td class="right">${formatMoney(getGroupTotal(group.id))}</td>
+        </tr>`,
+    )
+    .join('');
+
+  const exportDate = new Date().toLocaleDateString('tr-TR');
+
   const html = `<!doctype html>
 <html>
 <head>
   <meta charset="UTF-8" />
   <title>Teklif Formu</title>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 32px; }
-    .header { width: 100%; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 32px; font-size: 14px; }
+    .header { width: 100%; border-collapse: collapse; }
     .header td { vertical-align: top; }
     .title { text-align: center; font-size: 28px; font-weight: 700; }
     .logo-wrap { text-align: right; }
-    .customer { margin-top: 42px; font-size: 16px; line-height: 1.9; }
+    .customer { margin-top: 30px; font-size: 16px; line-height: 1.9; }
     .line { display: inline-block; min-width: 330px; border-bottom: 1px solid #666; padding-bottom: 2px; }
+    .main-table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    .main-table th, .main-table td { border: 1px solid #777; padding: 8px; }
+    .main-table th { background: #f2f2f2; }
+    .right { text-align: right; }
+    .section-title { margin-top: 26px; font-size: 18px; font-weight: 700; }
+    .general-list { margin-top: 10px; line-height: 1.8; font-size: 15px; }
   </style>
 </head>
 <body>
@@ -435,8 +466,34 @@ function exportProposalToWord() {
   </table>
 
   <div class="customer">
-    <div><strong>Müşteri İsmi:</strong> <span class="line">${proposal.firmName || ''}</span></div>
+    <div><strong>Müşteri İsmi:</strong> <span class="line">${escapeHtml(proposal.firmName || '')}</span></div>
     <div><strong>Vergi No:</strong> <span class="line">&nbsp;</span></div>
+    <div><strong>İlgili Kişi:</strong> <span class="line">&nbsp;</span></div>
+    <div><strong>İrtibat:</strong> <span class="line">&nbsp;</span></div>
+    <div><strong>Tarih:</strong> <span class="line">${exportDate}</span></div>
+  </div>
+
+  <table class="main-table">
+    <thead>
+      <tr>
+        <th>Tesisat Grubu</th>
+        <th class="right">Tutar</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${groupRows || '<tr><td colspan="2">Henüz tesisat grubu yok.</td></tr>'}
+    </tbody>
+    <tfoot>
+      <tr><td><strong>Genel Toplam</strong></td><td class="right"><strong>${formatMoney(total)}</strong></td></tr>
+      <tr><td><strong>KDV Tutarı (%20)</strong></td><td class="right"><strong>${formatMoney(vat)}</strong></td></tr>
+      <tr><td><strong>KDV Dahil Toplam Tutar</strong></td><td class="right"><strong>${formatMoney(totalWithVat)}</strong></td></tr>
+    </tfoot>
+  </table>
+
+  <div class="section-title">Genel Hususlar</div>
+  <div class="general-list">
+    <div>1.) Ödeme Şekli:</div>
+    <div>2.) KDV. Dahildir.</div>
   </div>
 </body>
 </html>`;
