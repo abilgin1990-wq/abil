@@ -1,4 +1,7 @@
 const storageKey = 'teklif_hazirlama_data_v1';
+const directoryDbName = 'teklif_directory_db';
+const directoryStoreName = 'handles';
+const directoryFileName = 'teklif_hazirlama_data.json';
 
 const state = loadState();
 let currentGroupId = null;
@@ -20,8 +23,84 @@ const navMainButton = document.getElementById('navMain');
 if (navMainButton) navMainButton.addEventListener('click', () => showMainView());
 document.getElementById('navMaterials').addEventListener('click', () => showMaterialsView());
 document.getElementById('selectStorageDir').addEventListener('click', selectStorageDirectory);
+document.getElementById('loadStorageDir').addEventListener('click', loadStateFromSelectedDirectory);
 
 showQuotesView();
+initializeDirectorySync();
+
+function openDirectoryDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(directoryDbName, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(directoryStoreName)) {
+        db.createObjectStore(directoryStoreName);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function setSavedDirectoryHandle(handle) {
+  const db = await openDirectoryDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(directoryStoreName, 'readwrite');
+    tx.objectStore(directoryStoreName).put(handle, 'defaultDir');
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function getSavedDirectoryHandle() {
+  const db = await openDirectoryDb();
+  const handle = await new Promise((resolve, reject) => {
+    const tx = db.transaction(directoryStoreName, 'readonly');
+    const req = tx.objectStore(directoryStoreName).get('defaultDir');
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return handle;
+}
+
+async function ensureDirectoryPermission(handle, write = true) {
+  if (!handle) return false;
+  const options = write ? { mode: 'readwrite' } : {};
+  if ((await handle.queryPermission(options)) === 'granted') return true;
+  return (await handle.requestPermission(options)) === 'granted';
+}
+
+function applyLoadedState(loaded) {
+  if (!loaded || !Array.isArray(loaded.proposals)) {
+    throw new Error('Geçersiz kayıt dosyası.');
+  }
+
+  state.proposals = loaded.proposals;
+  state.activeProposalId = loaded.activeProposalId || loaded.proposals[0]?.id || null;
+  state.globalCatalog = loaded.globalCatalog || {
+    plumbingGroups: [],
+    jobDetails: [],
+    materialCatalog: [],
+    exchangeRates: { usd: 1, eur: 1 },
+  };
+
+  if (!state.globalCatalog.exchangeRates) state.globalCatalog.exchangeRates = { usd: 1, eur: 1 };
+  if (!Array.isArray(state.globalCatalog.plumbingGroups)) state.globalCatalog.plumbingGroups = [];
+  if (!Array.isArray(state.globalCatalog.jobDetails)) state.globalCatalog.jobDetails = [];
+  if (!Array.isArray(state.globalCatalog.materialCatalog)) state.globalCatalog.materialCatalog = [];
+
+  state.proposals.forEach((proposal) => {
+    if (!proposal.data) proposal.data = createEmptyProposalData();
+    if (!proposal.data.plumbingGroups) proposal.data.plumbingGroups = [];
+    if (!proposal.data.jobDetails) proposal.data.jobDetails = [];
+    if (!proposal.data.lineItemsByDetail) proposal.data.lineItemsByDetail = {};
+    if (!proposal.updatedAt) proposal.updatedAt = new Date().toISOString();
+  });
+
+  localStorage.setItem(storageKey, JSON.stringify(state));
+}
 
 async function selectStorageDirectory() {
   if (!window.showDirectoryPicker) {
@@ -29,19 +108,79 @@ async function selectStorageDirectory() {
     return;
   }
 
-  storageDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-  await writeStateToDirectory();
-  alert('Kayıt dizini seçildi. Veriler bu dizindeki teklif_hazirlama_data.json dosyasına da yazılacak.');
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const allowed = await ensureDirectoryPermission(handle, true);
+    if (!allowed) {
+      alert('Dizin yazma izni verilmedi.');
+      return;
+    }
+
+    storageDirectoryHandle = handle;
+    await setSavedDirectoryHandle(handle);
+    await writeStateToDirectory();
+    alert('Kayıt dizini seçildi. Veriler bu dizindeki teklif_hazirlama_data.json dosyasına kaydedilecek.');
+  } catch {
+    // Kullanıcı iptal ettiğinde sessiz geç
+  }
 }
 
 async function writeStateToDirectory() {
   if (!storageDirectoryHandle) return;
-  const fileHandle = await storageDirectoryHandle.getFileHandle('teklif_hazirlama_data.json', {
-    create: true,
-  });
+  const fileHandle = await storageDirectoryHandle.getFileHandle(directoryFileName, { create: true });
   const writable = await fileHandle.createWritable();
   await writable.write(JSON.stringify(state, null, 2));
   await writable.close();
+}
+
+async function loadStateFromSelectedDirectory() {
+  if (!window.showDirectoryPicker) {
+    alert('Tarayıcınız dizinden yükleme özelliğini desteklemiyor. Chromium tabanlı tarayıcı kullanınız.');
+    return;
+  }
+
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const allowed = await ensureDirectoryPermission(handle, true);
+    if (!allowed) {
+      alert('Dizin izni verilmedi.');
+      return;
+    }
+
+    const fileHandle = await handle.getFileHandle(directoryFileName, { create: false });
+    const file = await fileHandle.getFile();
+    const text = await file.text();
+    applyLoadedState(JSON.parse(text));
+    storageDirectoryHandle = handle;
+    await setSavedDirectoryHandle(handle);
+    showQuotesView();
+    alert('Seçilen dizindeki kayıt başarıyla yüklendi.');
+  } catch {
+    alert('Seçilen dizinde teklif_hazirlama_data.json bulunamadı veya dosya okunamadı.');
+  }
+}
+
+async function initializeDirectorySync() {
+  if (!window.showDirectoryPicker) return;
+  try {
+    const handle = await getSavedDirectoryHandle();
+    if (!handle) return;
+    const allowed = await ensureDirectoryPermission(handle, true);
+    if (!allowed) return;
+    storageDirectoryHandle = handle;
+
+    try {
+      const fileHandle = await handle.getFileHandle(directoryFileName, { create: false });
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      applyLoadedState(JSON.parse(text));
+      showQuotesView();
+    } catch {
+      await writeStateToDirectory();
+    }
+  } catch {
+    storageDirectoryHandle = null;
+  }
 }
 
 function loadState() {
