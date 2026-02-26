@@ -7,6 +7,7 @@ const state = loadState();
 let currentGroupId = null;
 let currentDetailId = null;
 let storageDirectoryHandle = null;
+let storageFileHandle = null;
 
 const views = {
   quotes: document.getElementById('quotesView'),
@@ -42,22 +43,22 @@ function openDirectoryDb() {
   });
 }
 
-async function setSavedDirectoryHandle(handle) {
+async function setStoredHandle(key, handle) {
   const db = await openDirectoryDb();
   await new Promise((resolve, reject) => {
     const tx = db.transaction(directoryStoreName, 'readwrite');
-    tx.objectStore(directoryStoreName).put(handle, 'defaultDir');
+    tx.objectStore(directoryStoreName).put(handle, key);
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
   db.close();
 }
 
-async function getSavedDirectoryHandle() {
+async function getStoredHandle(key) {
   const db = await openDirectoryDb();
   const handle = await new Promise((resolve, reject) => {
     const tx = db.transaction(directoryStoreName, 'readonly');
-    const req = tx.objectStore(directoryStoreName).get('defaultDir');
+    const req = tx.objectStore(directoryStoreName).get(key);
     req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => reject(req.error);
   });
@@ -65,7 +66,7 @@ async function getSavedDirectoryHandle() {
   return handle;
 }
 
-async function ensureDirectoryPermission(handle, write = true) {
+async function ensureHandlePermission(handle, write = true) {
   if (!handle) return false;
   const options = write ? { mode: 'readwrite' } : {};
   if ((await handle.queryPermission(options)) === 'granted') return true;
@@ -102,6 +103,20 @@ function applyLoadedState(loaded) {
   localStorage.setItem(storageKey, JSON.stringify(state));
 }
 
+async function pickStorageFileFallback() {
+  if (!window.showSaveFilePicker) return null;
+  const handle = await window.showSaveFilePicker({
+    suggestedName: directoryFileName,
+    types: [{ description: 'JSON Dosyası', accept: { 'application/json': ['.json'] } }],
+  });
+  const allowed = await ensureHandlePermission(handle, true);
+  if (!allowed) throw new Error('Dosya yazma izni verilmedi.');
+  storageFileHandle = handle;
+  storageDirectoryHandle = null;
+  await setStoredHandle('defaultFile', handle);
+  return handle;
+}
+
 async function selectStorageDirectory() {
   if (!window.showDirectoryPicker) {
     alert('Tarayıcınız dizine kayıt özelliğini desteklemiyor. Chromium tabanlı tarayıcı kullanınız.');
@@ -110,76 +125,143 @@ async function selectStorageDirectory() {
 
   try {
     const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
-    const allowed = await ensureDirectoryPermission(handle, true);
+    const allowed = await ensureHandlePermission(handle, true);
     if (!allowed) {
       alert('Dizin yazma izni verilmedi.');
       return;
     }
 
     storageDirectoryHandle = handle;
-    await setSavedDirectoryHandle(handle);
-    await writeStateToDirectory();
-    alert('Kayıt dizini seçildi. Veriler bu dizindeki teklif_hazirlama_data.json dosyasına kaydedilecek.');
-  } catch {
-    // Kullanıcı iptal ettiğinde sessiz geç
+    storageFileHandle = null;
+    await setStoredHandle('defaultDir', handle);
+    await writeStateToExternalStorage();
+    alert('Kayıt dizini seçildi. Veriler seçilen konuma kaydedilecek.');
+  } catch (error) {
+    const name = error?.name || '';
+    if (name === 'AbortError') return;
+    try {
+      await pickStorageFileFallback();
+      await writeStateToExternalStorage();
+      alert('Dizin seçimi sistem klasörü nedeniyle engellendi. Bunun yerine seçilen dosyaya kayıt etkinleştirildi.');
+    } catch {
+      alert('Kayıt konumu seçilemedi. Tarayıcı güvenlik sınırları nedeniyle bazı sistem klasörlerine yazılamaz.');
+    }
   }
 }
 
-async function writeStateToDirectory() {
-  if (!storageDirectoryHandle) return;
-  const fileHandle = await storageDirectoryHandle.getFileHandle(directoryFileName, { create: true });
-  const writable = await fileHandle.createWritable();
-  await writable.write(JSON.stringify(state, null, 2));
-  await writable.close();
+async function writeStateToExternalStorage() {
+  if (storageFileHandle) {
+    const writable = await storageFileHandle.createWritable();
+    await writable.write(JSON.stringify(state, null, 2));
+    await writable.close();
+    return;
+  }
+
+  if (storageDirectoryHandle) {
+    const fileHandle = await storageDirectoryHandle.getFileHandle(directoryFileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(state, null, 2));
+    await writable.close();
+  }
 }
 
 async function loadStateFromSelectedDirectory() {
-  if (!window.showDirectoryPicker) {
-    alert('Tarayıcınız dizinden yükleme özelliğini desteklemiyor. Chromium tabanlı tarayıcı kullanınız.');
+  if (!window.showDirectoryPicker && !window.showOpenFilePicker) {
+    alert('Tarayıcınız dizinden/dosyadan yükleme özelliğini desteklemiyor.');
     return;
   }
 
   try {
-    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
-    const allowed = await ensureDirectoryPermission(handle, true);
-    if (!allowed) {
-      alert('Dizin izni verilmedi.');
+    if (window.showDirectoryPicker) {
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const allowed = await ensureHandlePermission(dirHandle, true);
+      if (!allowed) {
+        alert('Dizin izni verilmedi.');
+        return;
+      }
+
+      const fileHandle = await dirHandle.getFileHandle(directoryFileName, { create: false });
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      applyLoadedState(JSON.parse(text));
+      storageDirectoryHandle = dirHandle;
+      storageFileHandle = null;
+      await setStoredHandle('defaultDir', dirHandle);
+      showQuotesView();
+      alert('Seçilen dizindeki kayıt başarıyla yüklendi.');
       return;
     }
+  } catch (error) {
+    if (error?.name !== 'AbortError' && window.showOpenFilePicker) {
+      try {
+        const [fileHandle] = await window.showOpenFilePicker({
+          types: [{ description: 'JSON Dosyası', accept: { 'application/json': ['.json'] } }],
+          multiple: false,
+        });
+        const allowed = await ensureHandlePermission(fileHandle, true);
+        if (!allowed) {
+          alert('Dosya izni verilmedi.');
+          return;
+        }
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        applyLoadedState(JSON.parse(text));
+        storageFileHandle = fileHandle;
+        storageDirectoryHandle = null;
+        await setStoredHandle('defaultFile', fileHandle);
+        showQuotesView();
+        alert('Seçilen dosyadaki kayıt başarıyla yüklendi.');
+        return;
+      } catch {
+        alert('Kayıt yüklenemedi. Geçerli bir JSON dosyası seçiniz.');
+        return;
+      }
+    }
 
-    const fileHandle = await handle.getFileHandle(directoryFileName, { create: false });
-    const file = await fileHandle.getFile();
-    const text = await file.text();
-    applyLoadedState(JSON.parse(text));
-    storageDirectoryHandle = handle;
-    await setSavedDirectoryHandle(handle);
-    showQuotesView();
-    alert('Seçilen dizindeki kayıt başarıyla yüklendi.');
-  } catch {
-    alert('Seçilen dizinde teklif_hazirlama_data.json bulunamadı veya dosya okunamadı.');
+    if (error?.name !== 'AbortError') {
+      alert('Seçilen dizinde teklif_hazirlama_data.json bulunamadı veya dosya okunamadı.');
+    }
   }
 }
 
 async function initializeDirectorySync() {
-  if (!window.showDirectoryPicker) return;
+  if (!window.showDirectoryPicker && !window.showOpenFilePicker) return;
   try {
-    const handle = await getSavedDirectoryHandle();
-    if (!handle) return;
-    const allowed = await ensureDirectoryPermission(handle, true);
-    if (!allowed) return;
-    storageDirectoryHandle = handle;
+    const savedDir = await getStoredHandle('defaultDir');
+    if (savedDir) {
+      const allowed = await ensureHandlePermission(savedDir, true);
+      if (allowed) {
+        storageDirectoryHandle = savedDir;
+        storageFileHandle = null;
+        try {
+          const fileHandle = await savedDir.getFileHandle(directoryFileName, { create: false });
+          const file = await fileHandle.getFile();
+          const text = await file.text();
+          applyLoadedState(JSON.parse(text));
+          showQuotesView();
+          return;
+        } catch {
+          await writeStateToExternalStorage();
+          return;
+        }
+      }
+    }
 
-    try {
-      const fileHandle = await handle.getFileHandle(directoryFileName, { create: false });
-      const file = await fileHandle.getFile();
-      const text = await file.text();
-      applyLoadedState(JSON.parse(text));
-      showQuotesView();
-    } catch {
-      await writeStateToDirectory();
+    const savedFile = await getStoredHandle('defaultFile');
+    if (savedFile) {
+      const allowed = await ensureHandlePermission(savedFile, true);
+      if (allowed) {
+        storageFileHandle = savedFile;
+        storageDirectoryHandle = null;
+        const file = await savedFile.getFile();
+        const text = await file.text();
+        applyLoadedState(JSON.parse(text));
+        showQuotesView();
+      }
     }
   } catch {
     storageDirectoryHandle = null;
+    storageFileHandle = null;
   }
 }
 
@@ -275,10 +357,11 @@ function saveState() {
     active.updatedAt = new Date().toISOString();
   }
   localStorage.setItem(storageKey, JSON.stringify(state));
-  if (storageDirectoryHandle) {
-    writeStateToDirectory().catch(() => {
-      alert('Seçili dizine kayıt yapılamadı. Dizin iznini tekrar veriniz.');
+  if (storageDirectoryHandle || storageFileHandle) {
+    writeStateToExternalStorage().catch(() => {
+      alert('Seçili kayıt konumuna yazılamadı. Kayıt konumunu yeniden seçiniz.');
       storageDirectoryHandle = null;
+      storageFileHandle = null;
     });
   }
 }
