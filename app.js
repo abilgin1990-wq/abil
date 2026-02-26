@@ -197,11 +197,9 @@ function getProposalTotal(proposal) {
   const detailTotal = (detailId) => {
     const lines = data.lineItemsByDetail[detailId] || [];
     return lines.reduce((sum, line) => {
-      const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
-      if (!catalog) return sum;
-      const unitMaterial = calcMaterialUnitPrice(catalog);
-      const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
-      return sum + unitMaterial * line.quantity + laborUnitPrice * line.quantity;
+      const pricing = getLinePricing(line);
+      if (!pricing) return sum;
+      return sum + pricing.materialTotal + pricing.laborTotal;
     }, 0);
   };
 
@@ -255,17 +253,65 @@ function calcMaterialUnitPriceForData(catalogMaterial, data) {
   return listPriceTry * (1 - catalogMaterial.discount / 100);
 }
 
+function getLineSnapshotSource(line, catalog) {
+  if (line.snapshot) return line.snapshot;
+  if (catalog) {
+    return {
+      listPrice: Number(catalog.listPrice || 0),
+      currency: catalog.currency || 'TRY',
+      discount: Number(catalog.discount || 0),
+      laborUnitPrice: Number(catalog.laborUnitPrice || 0),
+    };
+  }
+  return null;
+}
+
+function getLinePricing(line) {
+  const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
+  const source = getLineSnapshotSource(line, catalog);
+  if (!source) return null;
+
+  const unitMaterial = calcMaterialUnitPrice(source);
+  const laborUnitPrice = Number(source.laborUnitPrice || 0);
+  return {
+    catalog,
+    source,
+    unitMaterial,
+    laborUnitPrice,
+    materialTotal: unitMaterial * line.quantity,
+    laborTotal: laborUnitPrice * line.quantity,
+  };
+}
+
+function isLinePriceOutdated(line, catalog) {
+  if (!catalog || !line.snapshot) return false;
+  return (
+    Number(line.snapshot.listPrice || 0) !== Number(catalog.listPrice || 0) ||
+    String(line.snapshot.currency || 'TRY') !== String(catalog.currency || 'TRY') ||
+    Number(line.snapshot.discount || 0) !== Number(catalog.discount || 0) ||
+    Number(line.snapshot.laborUnitPrice || 0) !== Number(catalog.laborUnitPrice || 0)
+  );
+}
+
+function updateLineSnapshotFromCatalog(line, catalog) {
+  if (!catalog) return;
+  line.snapshot = {
+    listPrice: Number(catalog.listPrice || 0),
+    currency: catalog.currency || 'TRY',
+    discount: Number(catalog.discount || 0),
+    laborUnitPrice: Number(catalog.laborUnitPrice || 0),
+  };
+}
+
 
 function getDetailSums(detailId) {
   const lines = getData().lineItemsByDetail[detailId] || [];
   return lines.reduce(
     (acc, line) => {
-      const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
-      if (!catalog) return acc;
-      const unitMaterial = calcMaterialUnitPrice(catalog);
-      const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
-      acc.material += unitMaterial * line.quantity;
-      acc.labor += laborUnitPrice * line.quantity;
+      const pricing = getLinePricing(line);
+      if (!pricing) return acc;
+      acc.material += pricing.materialTotal;
+      acc.labor += pricing.laborTotal;
       return acc;
     },
     { material: 0, labor: 0 },
@@ -289,13 +335,9 @@ function getGroupSums(groupId) {
 function getDetailTotal(detailId) {
   const lines = getData().lineItemsByDetail[detailId] || [];
   return lines.reduce((sum, line) => {
-    const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
-    if (!catalog) return sum;
-    const unitMaterial = calcMaterialUnitPrice(catalog);
-    const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
-    const materialTotal = unitMaterial * line.quantity;
-    const laborTotal = laborUnitPrice * line.quantity;
-    return sum + materialTotal + laborTotal;
+    const pricing = getLinePricing(line);
+    if (!pricing) return sum;
+    return sum + pricing.materialTotal + pricing.laborTotal;
   }, 0);
 }
 
@@ -760,12 +802,10 @@ function showDetailView() {
 
   const detailSums = lines.reduce(
     (acc, line) => {
-      const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
-      if (!catalog) return acc;
-      const unit = calcMaterialUnitPrice(catalog);
-      const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
-      acc.material += line.quantity * unit;
-      acc.labor += line.quantity * laborUnitPrice;
+      const pricing = getLinePricing(line);
+      if (!pricing) return acc;
+      acc.material += pricing.materialTotal;
+      acc.labor += pricing.laborTotal;
       return acc;
     },
     { material: 0, labor: 0 },
@@ -773,25 +813,29 @@ function showDetailView() {
 
   const rowHtml = lines
     .map((line) => {
-      const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
-      if (!catalog) return '';
-      const unit = calcMaterialUnitPrice(catalog);
-      const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
-      const materialTotal = line.quantity * unit;
-      const laborTotal = line.quantity * laborUnitPrice;
+      const pricing = getLinePricing(line);
+      if (!pricing) return '';
+      const catalog = pricing.catalog || {};
+      const source = pricing.source;
+      const outdated = isLinePriceOutdated(line, pricing.catalog);
       return `
       <tr>
-        <td>${catalog.name}</td>
-        <td>${catalog.brand}</td>
+        <td>${catalog.name || '-'}</td>
+        <td>${catalog.brand || '-'}</td>
         <td class="right">${line.quantity}</td>
-        <td class="right">${formatListPriceWithCurrency(catalog)}</td>
-        <td class="right">%${catalog.discount}</td>
-        <td class="right">${formatMoney(unit)}</td>
-        <td class="right">${formatMoney(laborUnitPrice)}</td>
-        <td class="right">${formatMoney(materialTotal)}</td>
-        <td class="right">${formatMoney(laborTotal)}</td>
-        <td class="right">${formatMoney(materialTotal + laborTotal)}</td>
-        <td><button class="danger" data-delete-line="${line.id}">Sil</button></td>
+        <td class="right">${formatListPriceWithCurrency(source)}</td>
+        <td class="right">%${source.discount}</td>
+        <td class="right">${formatMoney(pricing.unitMaterial)}</td>
+        <td class="right">${formatMoney(pricing.laborUnitPrice)}</td>
+        <td class="right">${formatMoney(pricing.materialTotal)}</td>
+        <td class="right">${formatMoney(pricing.laborTotal)}</td>
+        <td class="right">${formatMoney(pricing.materialTotal + pricing.laborTotal)}</td>
+        <td>
+          <div class="actions">
+            ${outdated ? '<span style="color:#c62828;font-weight:bold;">●</span><button data-refresh-line="'+line.id+'">Fiyatı Güncelle</button>' : ''}
+            <button class="danger" data-delete-line="${line.id}">Sil</button>
+          </div>
+        </td>
       </tr>`;
     })
     .join('');
@@ -870,15 +914,37 @@ function showDetailView() {
       return;
     }
 
+    const selectedCatalog = getMaterialCatalog().find((m) => m.id === selectedCatalogId);
+    if (!selectedCatalog) return;
+
     const line = {
       id: uid('line'),
       catalogMaterialId: selectedCatalogId,
       quantity: Number(fd.get('quantity')),
+      snapshot: {
+        listPrice: Number(selectedCatalog.listPrice || 0),
+        currency: selectedCatalog.currency || 'TRY',
+        discount: Number(selectedCatalog.discount || 0),
+        laborUnitPrice: Number(selectedCatalog.laborUnitPrice || 0),
+      },
     };
     if (!getData().lineItemsByDetail[detail.id]) getData().lineItemsByDetail[detail.id] = [];
     getData().lineItemsByDetail[detail.id].push(line);
     saveState();
     showDetailView();
+  });
+
+
+  views.detail.querySelectorAll('[data-refresh-line]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const line = (getData().lineItemsByDetail[detail.id] || []).find((l) => l.id === btn.dataset.refreshLine);
+      if (!line) return;
+      const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
+      if (!catalog) return;
+      updateLineSnapshotFromCatalog(line, catalog);
+      saveState();
+      showDetailView();
+    });
   });
 
   views.detail.querySelectorAll('[data-delete-line]').forEach((btn) => {
