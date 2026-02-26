@@ -423,9 +423,6 @@ function exportDetailedToExcel() {
   const rows = [];
 
   getData().plumbingGroups.forEach((group) => {
-    const groupSums = getGroupSums(group.id);
-    const groupTotal = groupSums.material + groupSums.labor;
-
     rows.push([
       'TESİSAT GRUBU',
       group.name,
@@ -438,15 +435,13 @@ function exportDetailedToExcel() {
       '',
       '',
       '',
-      Number(groupSums.material).toFixed(2),
-      Number(groupSums.labor).toFixed(2),
-      Number(groupTotal).toFixed(2),
+      '',
+      '',
+      '',
     ]);
 
     const details = getData().jobDetails.filter((d) => d.groupId === group.id);
     details.forEach((detail) => {
-      const detailSums = getDetailSums(detail.id);
-      const detailTotal = detailSums.material + detailSums.labor;
       rows.push([
         'İŞ DETAYI',
         group.name,
@@ -459,9 +454,9 @@ function exportDetailedToExcel() {
         '',
         '',
         '',
-        Number(detailSums.material).toFixed(2),
-        Number(detailSums.labor).toFixed(2),
-        Number(detailTotal).toFixed(2),
+        '',
+        '',
+        '',
       ]);
 
       const lines = getData().lineItemsByDetail[detail.id] || [];
