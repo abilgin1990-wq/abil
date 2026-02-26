@@ -367,10 +367,21 @@ function getGroupTotal(groupId) {
     .reduce((sum, d) => sum + getDetailTotal(d.id), 0);
 }
 
+function formatCsvNumber(value, decimals = 2) {
+  return Number(value || 0).toFixed(decimals).replace('.', ',');
+}
 
 function downloadCsvFile(filename, headers, rows) {
   const csv = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(';'))
+    .map((row) =>
+      row
+        .map((cell) => {
+          const text = String(cell ?? '');
+          if (/^-?\d+(?:[.,]\d+)?$/.test(text)) return text;
+          return `"${text.replaceAll('"', '""')}"`;
+        })
+        .join(';'),
+    )
     .join('\n');
 
   const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' });
@@ -471,15 +482,15 @@ function exportDetailedToExcel() {
           detail.name,
           catalog.name || '-',
           catalog.brand || '-',
-          Number(line.quantity || 0).toFixed(0),
-          Number(source.listPrice || 0).toFixed(2),
+          formatCsvNumber(line.quantity || 0),
+          formatCsvNumber(source.listPrice || 0),
           source.currency || 'TRY',
-          Number(source.discount || 0).toFixed(2),
-          Number(pricing.unitMaterial || 0).toFixed(2),
-          Number(pricing.laborUnitPrice || 0).toFixed(2),
-          Number(pricing.materialTotal || 0).toFixed(2),
-          Number(pricing.laborTotal || 0).toFixed(2),
-          Number((pricing.materialTotal || 0) + (pricing.laborTotal || 0)).toFixed(2),
+          formatCsvNumber(source.discount || 0),
+          formatCsvNumber(pricing.unitMaterial || 0),
+          formatCsvNumber(pricing.laborUnitPrice || 0),
+          formatCsvNumber(pricing.materialTotal || 0),
+          formatCsvNumber(pricing.laborTotal || 0),
+          formatCsvNumber((pricing.materialTotal || 0) + (pricing.laborTotal || 0)),
         ]);
       });
     });
@@ -490,9 +501,9 @@ function exportDetailedToExcel() {
   const totalWithVat = total + vat;
 
   rows.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '']);
-  rows.push(['TOPLAM', '', '', '', '', '', '', '', '', '', '', '', '', Number(total).toFixed(2)]);
-  rows.push(['KDV TUTARI (%20)', '', '', '', '', '', '', '', '', '', '', '', '', Number(vat).toFixed(2)]);
-  rows.push(['KDV DAHİL TOPLAM TUTAR', '', '', '', '', '', '', '', '', '', '', '', '', Number(totalWithVat).toFixed(2)]);
+  rows.push(['TOPLAM', '', '', '', '', '', '', '', '', '', '', '', '', formatCsvNumber(total)]);
+  rows.push(['KDV TUTARI (%20)', '', '', '', '', '', '', '', '', '', '', '', '', formatCsvNumber(vat)]);
+  rows.push(['KDV DAHİL TOPLAM TUTAR', '', '', '', '', '', '', '', '', '', '', '', '', formatCsvNumber(totalWithVat)]);
 
   downloadCsvFile('teklif-detayli.csv', headers, rows);
 }
