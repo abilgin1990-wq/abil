@@ -395,7 +395,6 @@ function showMainView() {
       const detailIds = getData().jobDetails.filter((d) => d.groupId === groupId).map((d) => d.id);
       getData().plumbingGroups = getData().plumbingGroups.filter((g) => g.id !== groupId);
       getData().jobDetails = getData().jobDetails.filter((d) => d.groupId !== groupId);
-      getData().materialCatalog = getData().materialCatalog.filter((m) => m.groupId !== groupId);
       detailIds.forEach((id) => delete getData().lineItemsByDetail[id]);
       saveState();
       showMainView();
@@ -504,7 +503,6 @@ function showGroupView() {
       if (!confirm('Silmek istiyor musunuz?')) return;
       const id = btn.dataset.deleteDetail;
       getData().jobDetails = getData().jobDetails.filter((d) => d.id !== id);
-      getData().materialCatalog = getData().materialCatalog.filter((m) => m.jobDetailId !== id);
       delete getData().lineItemsByDetail[id];
       saveState();
       showGroupView();
