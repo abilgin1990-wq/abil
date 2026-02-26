@@ -727,6 +727,19 @@ function showDetailView() {
 
   showView('detail');
 
+  const detailSums = lines.reduce(
+    (acc, line) => {
+      const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
+      if (!catalog) return acc;
+      const unit = calcMaterialUnitPrice(catalog);
+      const laborUnitPrice = Number(catalog.laborUnitPrice || line.laborUnitPrice || 0);
+      acc.material += line.quantity * unit;
+      acc.labor += line.quantity * laborUnitPrice;
+      return acc;
+    },
+    { material: 0, labor: 0 },
+  );
+
   const rowHtml = lines
     .map((line) => {
       const catalog = getMaterialCatalog().find((m) => m.id === line.catalogMaterialId);
@@ -791,7 +804,9 @@ function showDetailView() {
           ${rowHtml || '<tr><td colspan="11">Henüz satır yok.</td></tr>'}
         </tbody>
         <tfoot>
-          <tr><td colspan="10" class="right"><b>Genel Toplam</b></td><td class="right total">${formatMoney(getDetailTotal(detail.id))}</td><td></td></tr>
+          <tr><td colspan="10" class="right"><b>Malzemelerin Toplam Tutarı</b></td><td class="right total">${formatMoney(detailSums.material)}</td><td></td></tr>
+          <tr><td colspan="10" class="right"><b>İşçilik Toplamı</b></td><td class="right total">${formatMoney(detailSums.labor)}</td><td></td></tr>
+          <tr><td colspan="10" class="right"><b>Genel Toplam</b></td><td class="right total">${formatMoney(detailSums.material + detailSums.labor)}</td><td></td></tr>
         </tfoot>
       </table>
     </div>

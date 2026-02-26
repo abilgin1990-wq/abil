@@ -39,15 +39,20 @@ h4 {
 .top-nav-layout {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1.2rem;
   margin-left: auto;
 }
 
 .left-nav-stack {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  z-index: 20;
 }
 
 .right-nav {
@@ -164,6 +169,12 @@ th {
     width: 100%;
     margin-left: 0;
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .left-nav-stack {
+    position: static;
+    transform: none;
   }
 
   .right-nav {
