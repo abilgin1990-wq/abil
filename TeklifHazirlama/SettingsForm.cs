@@ -197,8 +197,8 @@ public class SettingsForm : Form
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "PB", DataPropertyName = nameof(MaterialCatalogItem.Currency), Width = 60 });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İskonto", DataPropertyName = nameof(MaterialCatalogItem.DiscountPercent), Width = 70 });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İşçilik", DataPropertyName = nameof(MaterialCatalogItem.LaborUnitPrice), Width = 90 });
-        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EditMaterialColumnName, HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 80 });
-        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteMaterialColumnName, HeaderText = "Sil", Text = "Sil", UseColumnTextForButtonValue = true, Width = 80 });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EditMaterialColumnName, HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 80, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteMaterialColumnName, HeaderText = "Sil", Text = "Sil", UseColumnTextForButtonValue = true, Width = 80, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
 
         _materialsGrid.CellContentClick += (_, e) =>
         {
@@ -207,24 +207,29 @@ public class SettingsForm : Form
             var clickedColumn = _materialsGrid.Columns[e.ColumnIndex].Name;
             if (clickedColumn == EditMaterialColumnName)
             {
-                _matGroupCombo.SelectedItem = item.InstallationGroupName;
-                RefreshMaterialDetailCombo();
-                _matDetailCombo.SelectedItem = item.WorkDetailName;
-                _matNameText.Text = item.MaterialName;
-                _brandText.Text = item.Brand;
-                _priceText.Text = item.ListPrice.ToString();
-                _discountText.Text = item.DiscountPercent.ToString();
-                _laborText.Text = item.LaborUnitPrice.ToString();
-                _currencyCombo.SelectedItem = item.Currency;
-                _store.State.Settings.MaterialCatalog.Remove(item);
+                using var editForm = new MaterialCatalogEditForm(_store.State.Settings, item);
+                if (editForm.ShowDialog() == DialogResult.OK)
+                {
+                    var updatedItem = editForm.EditedItem;
+                    item.InstallationGroupName = updatedItem.InstallationGroupName;
+                    item.WorkDetailName = updatedItem.WorkDetailName;
+                    item.MaterialName = updatedItem.MaterialName;
+                    item.Brand = updatedItem.Brand;
+                    item.ListPrice = updatedItem.ListPrice;
+                    item.Currency = updatedItem.Currency;
+                    item.DiscountPercent = updatedItem.DiscountPercent;
+                    item.LaborUnitPrice = updatedItem.LaborUnitPrice;
+
+                    _store.MarkDirty();
+                    RefreshMaterialsGrid();
+                }
             }
             else if (clickedColumn == DeleteMaterialColumnName)
             {
                 _store.State.Settings.MaterialCatalog.Remove(item);
+                _store.MarkDirty();
+                RefreshMaterialsGrid();
             }
-
-            _store.MarkDirty();
-            RefreshMaterialsGrid();
         };
 
         _materialsGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
