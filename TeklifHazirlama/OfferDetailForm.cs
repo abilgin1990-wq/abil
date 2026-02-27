@@ -9,6 +9,7 @@ public class OfferDetailForm : Form
     private readonly Offer _offer;
     private readonly ComboBox _groupCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDown };
     private readonly DataGridView _groupGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
+    private readonly BindingSource _groupBindingSource = new();
     private readonly Label _generalTotalLabel = new() { AutoSize = true };
     private readonly Label _vatLabel = new() { AutoSize = true };
     private readonly Label _withVatLabel = new() { AutoSize = true };
@@ -93,11 +94,13 @@ public class OfferDetailForm : Form
             }
             else if (clickedColumn == DeleteColumnName)
             {
-                _offer.InstallationGroups.RemoveAll(g => g.Id == group.Id);
+                _offer.InstallationGroups.Remove(group);
                 _store.MarkDirty();
                 RefreshData();
             }
         };
+
+        _groupGrid.DataSource = _groupBindingSource;
     }
 
     private void AddGroup()
@@ -116,8 +119,12 @@ public class OfferDetailForm : Form
         _groupCombo.Items.Clear();
         _groupCombo.Items.AddRange(_store.State.Settings.InstallationGroupTemplates.Cast<object>().ToArray());
 
-        _groupGrid.DataSource = null;
-        _groupGrid.DataSource = _offer.InstallationGroups;
+        if (!ReferenceEquals(_groupBindingSource.DataSource, _offer.InstallationGroups))
+        {
+            _groupBindingSource.DataSource = _offer.InstallationGroups;
+        }
+
+        _groupBindingSource.ResetBindings(false);
 
         var general = _offer.TotalAmount;
         var vat = general * 0.20m;
