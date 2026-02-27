@@ -103,6 +103,9 @@ public class OfferDetailForm : Form
             }
         };
 
+
+        _groupGrid.EnableHeadersVisualStyles = false;
+        _groupGrid.ColumnHeadersDefaultCellStyle.Font = new Font(_groupGrid.Font, FontStyle.Bold);
         _groupGrid.DataSource = _groupBindingSource;
     }
 

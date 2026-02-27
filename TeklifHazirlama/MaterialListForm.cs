@@ -109,6 +109,9 @@ public class MaterialListForm : Form
 
         _materialCombo.SelectedIndexChanged += (_, _) => BindBrandCombo();
 
+
+        _materialsGrid.EnableHeadersVisualStyles = false;
+        _materialsGrid.ColumnHeadersDefaultCellStyle.Font = new Font(_materialsGrid.Font, FontStyle.Bold);
         _materialsGrid.DataSource = _materialsBindingSource;
     }
 
