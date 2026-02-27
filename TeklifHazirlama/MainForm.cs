@@ -22,6 +22,8 @@ public class MainForm : Form
         ConfigureOfferGrid();
         RefreshOfferGrid();
 
+        ButtonStyler.Apply(this);
+
         FormClosing += (_, e) =>
         {
             if (!PromptToSaveChanges())
@@ -98,6 +100,7 @@ public class MainForm : Form
                 offer.LastUpdated = DateTime.Now;
                 _store.MarkDirty();
                 RefreshOfferGrid();
+
             }
             else if (clickedColumn == DeleteColumnName)
             {
@@ -107,6 +110,7 @@ public class MainForm : Form
                 _store.State.Offers.Remove(offer);
                 _store.MarkDirty();
                 RefreshOfferGrid();
+
             }
         };
 
@@ -147,6 +151,7 @@ public class MainForm : Form
         _projectText.Clear();
         _store.MarkDirty();
         RefreshOfferGrid();
+
     }
 
     private void RefreshOfferGrid()
@@ -164,6 +169,7 @@ public class MainForm : Form
         using var settingsForm = new SettingsForm(_store);
         settingsForm.ShowDialog();
         RefreshOfferGrid();
+
     }
 
     private void LoadFromFile()
@@ -177,6 +183,7 @@ public class MainForm : Form
         {
             _store.Load(dialog.FileName);
             RefreshOfferGrid();
+
         }
         catch (Exception ex)
         {

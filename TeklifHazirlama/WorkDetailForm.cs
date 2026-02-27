@@ -28,6 +28,8 @@ public class WorkDetailForm : Form
         Controls.Add(BuildLayout());
         ConfigureGrid();
         RefreshData();
+
+        ButtonStyler.Apply(this);
     }
 
     private Control BuildLayout()

@@ -26,6 +26,8 @@ public class OfferDetailForm : Form
         Controls.Add(BuildLayout());
         ConfigureGrid();
         RefreshData();
+
+        ButtonStyler.Apply(this);
     }
 
     private Control BuildLayout()

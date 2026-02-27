@@ -33,6 +33,8 @@ public class MaterialListForm : Form
         ConfigureGrid();
         BindMaterialCombos();
         RefreshData();
+
+        ButtonStyler.Apply(this);
     }
 
     private Control BuildLayout()

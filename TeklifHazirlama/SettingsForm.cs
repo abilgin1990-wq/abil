@@ -35,6 +35,8 @@ public class SettingsForm : Form
         Controls.Add(BuildTabs());
         ConfigureMaterialsGrid();
         RefreshAll();
+
+        ButtonStyler.Apply(this);
     }
 
     private Control BuildTabs()
@@ -224,6 +226,7 @@ public class SettingsForm : Form
         _newGroupText.Clear();
         _store.MarkDirty();
         RefreshAll();
+
     }
 
     private void AddDetailTemplate()
@@ -262,6 +265,7 @@ public class SettingsForm : Form
 
         _store.MarkDirty();
         RefreshAll();
+
     }
 
     private void EditTemplateItem()
@@ -294,6 +298,7 @@ public class SettingsForm : Form
 
         _store.MarkDirty();
         RefreshAll();
+
     }
 
     private void AddMaterialCatalog()
@@ -395,6 +400,7 @@ public static class Prompt
         form.Controls.AddRange([text, ok, cancel]);
         form.AcceptButton = ok;
         form.CancelButton = cancel;
+        ButtonStyler.Apply(form);
         return form.ShowDialog() == DialogResult.OK ? text.Text.Trim() : null;
     }
 }
