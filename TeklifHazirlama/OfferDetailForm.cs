@@ -39,6 +39,9 @@ public class OfferDetailForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
+        var backButton = new Button { Text = "Geri", Width = 80, Height = 30 };
+        backButton.Click += (_, _) => Close();
+
         var title = new Label
         {
             Text = "Teklif Ana Kalemleri",
@@ -46,6 +49,10 @@ public class OfferDetailForm : Form
             AutoSize = true,
             Padding = new Padding(0, 8, 0, 8)
         };
+
+        var titlePanel = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
+        titlePanel.Controls.Add(backButton);
+        titlePanel.Controls.Add(title);
 
         var info = new Label
         {
@@ -64,7 +71,7 @@ public class OfferDetailForm : Form
         totalPanel.Controls.Add(_vatLabel);
         totalPanel.Controls.Add(_withVatLabel);
 
-        root.Controls.Add(title, 0, 0);
+        root.Controls.Add(titlePanel, 0, 0);
         root.Controls.Add(info, 0, 1);
         root.Controls.Add(addPanel, 0, 2);
         root.Controls.Add(_groupGrid, 0, 3);
@@ -88,8 +95,17 @@ public class OfferDetailForm : Form
 
             if (clickedColumn == OpenColumnName)
             {
-                using var form = new WorkDetailForm(_store, _offer, group);
+                using var form = new WorkDetailForm(_store, _offer, group)
+                {
+                    StartPosition = FormStartPosition.Manual,
+                    Size = Size,
+                    Location = Location
+                };
+
+                Hide();
                 form.ShowDialog();
+                Show();
+
                 _offer.LastUpdated = DateTime.Now;
                 _store.MarkDirty();
                 RefreshData();

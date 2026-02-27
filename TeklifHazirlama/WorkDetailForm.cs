@@ -40,13 +40,21 @@ public class WorkDetailForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        root.Controls.Add(new Label
+        var backButton = new Button { Text = "Geri", Width = 80, Height = 30 };
+        backButton.Click += (_, _) => Close();
+
+        var titleLabel = new Label
         {
             Text = _group.Name,
             Font = new Font(Font.FontFamily, 12, FontStyle.Bold),
             AutoSize = true,
             Padding = new Padding(0, 8, 0, 8)
-        }, 0, 0);
+        };
+
+        var titlePanel = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
+        titlePanel.Controls.Add(backButton);
+        titlePanel.Controls.Add(titleLabel);
+        root.Controls.Add(titlePanel, 0, 0);
 
         var addPanel = new FlowLayoutPanel { AutoSize = true };
         var addButton = new Button { Text = "İş Detayı Ekle", Width = 130 };
@@ -80,8 +88,17 @@ public class WorkDetailForm : Form
 
             if (clickedColumn == EnterColumnName)
             {
-                using var form = new MaterialListForm(_store, _offer, _group, detail);
+                using var form = new MaterialListForm(_store, _offer, _group, detail)
+                {
+                    StartPosition = FormStartPosition.Manual,
+                    Size = Size,
+                    Location = Location
+                };
+
+                Hide();
                 form.ShowDialog();
+                Show();
+
                 _offer.LastUpdated = DateTime.Now;
                 _store.MarkDirty();
                 RefreshData();

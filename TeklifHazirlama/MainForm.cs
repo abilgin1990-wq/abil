@@ -95,12 +95,20 @@ public class MainForm : Form
             var clickedColumn = _offersGrid.Columns[e.ColumnIndex].Name;
             if (clickedColumn == DetailColumnName)
             {
-                using var detailForm = new OfferDetailForm(_store, offer);
+                using var detailForm = new OfferDetailForm(_store, offer)
+                {
+                    StartPosition = FormStartPosition.Manual,
+                    Size = Size,
+                    Location = Location
+                };
+
+                Hide();
                 detailForm.ShowDialog();
+                Show();
+
                 offer.LastUpdated = DateTime.Now;
                 _store.MarkDirty();
                 RefreshOfferGrid();
-
             }
             else if (clickedColumn == DeleteColumnName)
             {
