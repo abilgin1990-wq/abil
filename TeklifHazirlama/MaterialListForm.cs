@@ -12,6 +12,9 @@ public class MaterialListForm : Form
     private readonly TextBox _materialText = new() { Width = 180 };
     private readonly TextBox _brandText = new() { Width = 140 };
     private readonly TextBox _quantityText = new() { Width = 80, Text = "1" };
+    private readonly ListBox _materialSuggestions = new() { Width = 180, Height = 110, Visible = false, IntegralHeight = false };
+    private readonly ListBox _brandSuggestions = new() { Width = 140, Height = 110, Visible = false, IntegralHeight = false };
+    private bool _suppressSuggestionUpdate;
     private readonly DataGridView _materialsGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
     private readonly BindingSource _materialsBindingSource = new();
     private readonly Label _materialTotalLabel = new() { AutoSize = true };
@@ -31,7 +34,7 @@ public class MaterialListForm : Form
 
         Controls.Add(BuildLayout());
         ConfigureGrid();
-        ConfigureAutoComplete();
+        InitializeFiltering();
         RefreshData();
 
         ButtonStyler.Apply(this);
@@ -61,25 +64,49 @@ public class MaterialListForm : Form
         titlePanel.Controls.Add(titleLabel);
         root.Controls.Add(titlePanel, 0, 0);
 
-        var addPanel = new FlowLayoutPanel { AutoSize = true };
+        root.RowCount = 5;
+        root.RowStyles.Clear();
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
         var addButton = new Button { Text = "Ekle", Width = 90 };
         addButton.Click += (_, _) => AddMaterial();
 
-        addPanel.Controls.AddRange([
-            new Label { Text = "Malzeme", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _materialText,
-            new Label { Text = "Marka", AutoSize = true, Padding = new Padding(8, 8, 0, 0) }, _brandText,
-            new Label { Text = "Adet", AutoSize = true, Padding = new Padding(8, 8, 0, 0) }, _quantityText,
-            addButton
-        ]);
+        var addPanel = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, RowCount = 2 };
+        addPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        addPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        addPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        addPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        addPanel.Controls.Add(new Label { Text = "Malzeme", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 0, 0);
+        addPanel.Controls.Add(new Label { Text = "Marka", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 1, 0);
+        addPanel.Controls.Add(new Label { Text = "Adet", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 2, 0);
+
+        addPanel.Controls.Add(_materialText, 0, 1);
+        addPanel.Controls.Add(_brandText, 1, 1);
+        addPanel.Controls.Add(_quantityText, 2, 1);
+        addPanel.Controls.Add(addButton, 3, 1);
+
+        var suggestionPanel = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, RowCount = 1 };
+        suggestionPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        suggestionPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        suggestionPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        suggestionPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        suggestionPanel.Controls.Add(_materialSuggestions, 0, 0);
+        suggestionPanel.Controls.Add(_brandSuggestions, 1, 0);
 
         root.Controls.Add(addPanel, 0, 1);
-        root.Controls.Add(_materialsGrid, 0, 2);
+        root.Controls.Add(suggestionPanel, 0, 2);
+        root.Controls.Add(_materialsGrid, 0, 3);
 
         var totals = new TableLayoutPanel { AutoSize = true, ColumnCount = 1 };
         totals.Controls.Add(_materialTotalLabel);
         totals.Controls.Add(_laborTotalLabel);
         totals.Controls.Add(_generalTotalLabel);
-        root.Controls.Add(totals, 0, 3);
+        root.Controls.Add(totals, 0, 4);
 
         return root;
     }
@@ -119,10 +146,42 @@ public class MaterialListForm : Form
 
         _materialText.TextChanged += (_, _) =>
         {
-            ConfigureMaterialAutoComplete();
-            ConfigureBrandAutoComplete();
+            if (_suppressSuggestionUpdate) return;
+            UpdateMaterialSuggestions();
+            UpdateBrandSuggestions();
         };
-        _brandText.TextChanged += (_, _) => ConfigureBrandAutoComplete();
+        _brandText.TextChanged += (_, _) =>
+        {
+            if (_suppressSuggestionUpdate) return;
+            UpdateBrandSuggestions();
+        };
+
+        _materialText.KeyDown += (_, e) => HandleSuggestionKeyDown(e, _materialSuggestions, _materialText, selected =>
+        {
+            _materialText.Text = selected;
+            UpdateBrandSuggestions();
+        });
+
+        _brandText.KeyDown += (_, e) => HandleSuggestionKeyDown(e, _brandSuggestions, _brandText, selected => _brandText.Text = selected);
+
+        _materialSuggestions.DoubleClick += (_, _) => ApplySuggestion(_materialSuggestions, _materialText, selected =>
+        {
+            _materialText.Text = selected;
+            UpdateBrandSuggestions();
+        });
+        _brandSuggestions.DoubleClick += (_, _) => ApplySuggestion(_brandSuggestions, _brandText, selected => _brandText.Text = selected);
+
+        _materialSuggestions.Click += (_, _) => ApplySuggestion(_materialSuggestions, _materialText, selected =>
+        {
+            _materialText.Text = selected;
+            UpdateBrandSuggestions();
+        });
+        _brandSuggestions.Click += (_, _) => ApplySuggestion(_brandSuggestions, _brandText, selected => _brandText.Text = selected);
+
+        _materialText.Leave += (_, _) => BeginInvoke(new Action(() => { if (!_materialSuggestions.Focused) _materialSuggestions.Visible = false; }));
+        _brandText.Leave += (_, _) => BeginInvoke(new Action(() => { if (!_brandSuggestions.Focused) _brandSuggestions.Visible = false; }));
+        _materialSuggestions.Leave += (_, _) => _materialSuggestions.Visible = false;
+        _brandSuggestions.Leave += (_, _) => _brandSuggestions.Visible = false;
 
         _materialsGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _materialsGrid.EnableHeadersVisualStyles = false;
@@ -130,18 +189,15 @@ public class MaterialListForm : Form
         _materialsGrid.DataSource = _materialsBindingSource;
     }
 
-    private void ConfigureAutoComplete()
+    private void InitializeFiltering()
     {
-        _materialText.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-        _materialText.AutoCompleteSource = AutoCompleteSource.CustomSource;
-        _brandText.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-        _brandText.AutoCompleteSource = AutoCompleteSource.CustomSource;
-
-        ConfigureMaterialAutoComplete();
-        ConfigureBrandAutoComplete();
+        UpdateMaterialSuggestions();
+        UpdateBrandSuggestions();
+        _materialSuggestions.Visible = false;
+        _brandSuggestions.Visible = false;
     }
 
-    private void ConfigureMaterialAutoComplete()
+    private void UpdateMaterialSuggestions()
     {
         var materialFilter = _materialText.Text.Trim();
 
@@ -153,12 +209,10 @@ public class MaterialListForm : Form
             .OrderBy(x => x)
             .ToList();
 
-        var materialSource = new AutoCompleteStringCollection();
-        materialSource.AddRange(materials.ToArray());
-        ApplyAutoCompleteSource(_materialText, materialSource);
+        BindSuggestions(_materialSuggestions, materials, _materialText.Focused && !string.IsNullOrWhiteSpace(materialFilter));
     }
 
-    private void ConfigureBrandAutoComplete()
+    private void UpdateBrandSuggestions()
     {
         var materialFilter = _materialText.Text.Trim();
         var brandFilter = _brandText.Text.Trim();
@@ -172,22 +226,58 @@ public class MaterialListForm : Form
             .OrderBy(x => x)
             .ToList();
 
-        var brandSource = new AutoCompleteStringCollection();
-        brandSource.AddRange(brands.ToArray());
-        ApplyAutoCompleteSource(_brandText, brandSource);
+        BindSuggestions(_brandSuggestions, brands, _brandText.Focused && !string.IsNullOrWhiteSpace(brandFilter));
     }
 
-
-    private static void ApplyAutoCompleteSource(TextBox textBox, AutoCompleteStringCollection source)
+    private static void BindSuggestions(ListBox listBox, List<string> items, bool show)
     {
-        var previousMode = textBox.AutoCompleteMode;
-        var previousSource = textBox.AutoCompleteSource;
+        listBox.BeginUpdate();
+        listBox.Items.Clear();
+        foreach (var item in items)
+        {
+            listBox.Items.Add(item);
+        }
+        listBox.EndUpdate();
+        listBox.Visible = show && listBox.Items.Count > 0;
+    }
 
-        textBox.AutoCompleteMode = AutoCompleteMode.None;
-        textBox.AutoCompleteSource = AutoCompleteSource.None;
-        textBox.AutoCompleteCustomSource = source;
-        textBox.AutoCompleteSource = previousSource;
-        textBox.AutoCompleteMode = previousMode;
+    private void HandleSuggestionKeyDown(KeyEventArgs e, ListBox listBox, TextBox targetTextBox, Action<string> apply)
+    {
+        if (!listBox.Visible || listBox.Items.Count == 0) return;
+
+        if (e.KeyCode == Keys.Down)
+        {
+            listBox.Focus();
+            listBox.SelectedIndex = 0;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.KeyCode == Keys.Enter)
+        {
+            ApplySuggestion(listBox, targetTextBox, apply);
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+        }
+    }
+
+    private void ApplySuggestion(ListBox listBox, TextBox targetTextBox, Action<string> apply)
+    {
+        if (listBox.SelectedItem is not string selected) return;
+
+        _suppressSuggestionUpdate = true;
+        try
+        {
+            apply(selected);
+            targetTextBox.SelectionStart = targetTextBox.TextLength;
+            targetTextBox.SelectionLength = 0;
+            listBox.Visible = false;
+            targetTextBox.Focus();
+        }
+        finally
+        {
+            _suppressSuggestionUpdate = false;
+        }
     }
 
     private void AddMaterial()
