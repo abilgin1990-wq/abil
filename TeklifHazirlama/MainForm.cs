@@ -9,6 +9,7 @@ public class MainForm : Form
     private readonly TextBox _companyText = new() { Width = 220 };
     private readonly TextBox _projectText = new() { Width = 220 };
     private readonly DataGridView _offersGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
+    private readonly BindingSource _offersBindingSource = new();
 
     public MainForm()
     {
@@ -104,11 +105,13 @@ public class MainForm : Form
             }
             else if (clickedColumn == DeleteColumnName)
             {
-                _store.State.Offers.RemoveAll(o => o.Id == offer.Id);
+                _store.State.Offers.Remove(offer);
                 _store.MarkDirty();
                 RefreshOfferGrid();
             }
         };
+
+        _offersGrid.DataSource = _offersBindingSource;
     }
 
     private void AddOffer()
@@ -134,8 +137,12 @@ public class MainForm : Form
 
     private void RefreshOfferGrid()
     {
-        _offersGrid.DataSource = null;
-        _offersGrid.DataSource = _store.State.Offers;
+        if (!ReferenceEquals(_offersBindingSource.DataSource, _store.State.Offers))
+        {
+            _offersBindingSource.DataSource = _store.State.Offers;
+        }
+
+        _offersBindingSource.ResetBindings(false);
     }
 
     private void OpenSettings()
