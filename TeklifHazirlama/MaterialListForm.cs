@@ -1,0 +1,188 @@
+namespace TeklifHazirlama;
+
+public class MaterialListForm : Form
+{
+    private readonly DataStore _store;
+    private readonly Offer _offer;
+    private readonly InstallationGroup _group;
+    private readonly WorkDetail _detail;
+
+    private readonly ComboBox _materialCombo = new() { Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly ComboBox _brandCombo = new() { Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly TextBox _quantityText = new() { Width = 80, Text = "1" };
+    private readonly DataGridView _materialsGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
+    private readonly Label _materialTotalLabel = new() { AutoSize = true };
+    private readonly Label _laborTotalLabel = new() { AutoSize = true };
+    private readonly Label _generalTotalLabel = new() { AutoSize = true };
+
+    public MaterialListForm(DataStore store, Offer offer, InstallationGroup group, WorkDetail detail)
+    {
+        _store = store;
+        _offer = offer;
+        _group = group;
+        _detail = detail;
+
+        Text = "Malzeme Listesi";
+        Width = 1400;
+        Height = 680;
+
+        Controls.Add(BuildLayout());
+        ConfigureGrid();
+        BindMaterialCombos();
+        RefreshData();
+    }
+
+    private Control BuildLayout()
+    {
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 4, ColumnCount = 1 };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        root.Controls.Add(new Label
+        {
+            Text = _detail.Name,
+            Font = new Font(Font.FontFamily, 12, FontStyle.Bold),
+            AutoSize = true,
+            Padding = new Padding(0, 8, 0, 8)
+        }, 0, 0);
+
+        var addPanel = new FlowLayoutPanel { AutoSize = true };
+        var addButton = new Button { Text = "Ekle", Width = 90 };
+        addButton.Click += (_, _) => AddMaterial();
+
+        addPanel.Controls.AddRange([
+            new Label { Text = "Malzeme", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _materialCombo,
+            new Label { Text = "Marka", AutoSize = true, Padding = new Padding(8, 8, 0, 0) }, _brandCombo,
+            new Label { Text = "Adet", AutoSize = true, Padding = new Padding(8, 8, 0, 0) }, _quantityText,
+            addButton
+        ]);
+
+        root.Controls.Add(addPanel, 0, 1);
+        root.Controls.Add(_materialsGrid, 0, 2);
+
+        var totals = new TableLayoutPanel { AutoSize = true, ColumnCount = 1 };
+        totals.Controls.Add(_materialTotalLabel);
+        totals.Controls.Add(_laborTotalLabel);
+        totals.Controls.Add(_generalTotalLabel);
+        root.Controls.Add(totals, 0, 3);
+
+        return root;
+    }
+
+    private void ConfigureGrid()
+    {
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Malzeme", DataPropertyName = nameof(MaterialSelection.MaterialName), Width = 140 });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Marka", DataPropertyName = nameof(MaterialSelection.Brand), Width = 120 });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Adet", DataPropertyName = nameof(MaterialSelection.Quantity), Width = 70 });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Liste Fiyatı", DataPropertyName = nameof(MaterialSelection.ListPrice), Width = 110, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İskonto %", DataPropertyName = nameof(MaterialSelection.DiscountPercent), Width = 80 });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Birim Fiyat", DataPropertyName = nameof(MaterialSelection.UnitPrice), Width = 100, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İşçilik Birim", DataPropertyName = nameof(MaterialSelection.LaborUnitPrice), Width = 110, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Malzeme Toplam", DataPropertyName = nameof(MaterialSelection.MaterialTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İşçilik Toplam", DataPropertyName = nameof(MaterialSelection.LaborTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Genel Toplam", DataPropertyName = nameof(MaterialSelection.GrandTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Sil", Text = "Malzemeyi Sil", UseColumnTextForButtonValue = true, Width = 110 });
+
+        _materialsGrid.CellContentClick += (_, e) =>
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex != 10) return;
+            var material = (MaterialSelection)_materialsGrid.Rows[e.RowIndex].DataBoundItem;
+            _detail.Materials.Remove(material);
+            _offer.LastUpdated = DateTime.Now;
+            _store.MarkDirty();
+            RefreshData();
+        };
+
+        _materialCombo.SelectedIndexChanged += (_, _) => BindBrandCombo();
+    }
+
+    private void BindMaterialCombos()
+    {
+        var materials = _store.State.Settings.MaterialCatalog
+            .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name)
+            .Select(m => m.MaterialName)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+
+        _materialCombo.Items.Clear();
+        _materialCombo.Items.AddRange(materials.Cast<object>().ToArray());
+        if (_materialCombo.Items.Count > 0) _materialCombo.SelectedIndex = 0;
+
+        BindBrandCombo();
+    }
+
+    private void BindBrandCombo()
+    {
+        _brandCombo.Items.Clear();
+        if (_materialCombo.SelectedItem is not string materialName) return;
+
+        var brands = _store.State.Settings.MaterialCatalog
+            .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name && m.MaterialName == materialName)
+            .Select(m => m.Brand)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+
+        _brandCombo.Items.AddRange(brands.Cast<object>().ToArray());
+        if (_brandCombo.Items.Count > 0) _brandCombo.SelectedIndex = 0;
+    }
+
+    private void AddMaterial()
+    {
+        if (_materialCombo.SelectedItem is not string materialName || _brandCombo.SelectedItem is not string brand)
+        {
+            MessageBox.Show("Malzeme ve marka seçiniz.");
+            return;
+        }
+
+        if (!decimal.TryParse(_quantityText.Text, out var quantity) || quantity <= 0)
+        {
+            MessageBox.Show("Geçerli bir adet giriniz.");
+            return;
+        }
+
+        var item = _store.State.Settings.MaterialCatalog.FirstOrDefault(m =>
+            m.InstallationGroupName == _group.Name &&
+            m.WorkDetailName == _detail.Name &&
+            m.MaterialName == materialName &&
+            m.Brand == brand);
+
+        if (item == null) return;
+
+        var rate = item.Currency switch
+        {
+            "USD" => _store.State.Settings.DollarRate,
+            "EUR" => _store.State.Settings.EuroRate,
+            _ => 1m
+        };
+
+        _detail.Materials.Add(new MaterialSelection
+        {
+            MaterialCatalogItemId = item.Id,
+            MaterialName = item.MaterialName,
+            Brand = item.Brand,
+            Quantity = quantity,
+            ListPrice = item.ListPrice * rate,
+            DiscountPercent = item.DiscountPercent,
+            UnitPrice = item.UnitPrice * rate,
+            LaborUnitPrice = item.LaborUnitPrice
+        });
+
+        _offer.LastUpdated = DateTime.Now;
+        _store.MarkDirty();
+        RefreshData();
+    }
+
+    private void RefreshData()
+    {
+        _materialsGrid.DataSource = null;
+        _materialsGrid.DataSource = _detail.Materials;
+
+        _materialTotalLabel.Text = $"Malzemelerin Toplam Tutarı: {_detail.MaterialTotal:N2}";
+        _laborTotalLabel.Text = $"İşçilik Toplam Tutarı: {_detail.LaborTotal:N2}";
+        _generalTotalLabel.Text = $"Genel Toplam: {_detail.GrandTotal:N2}";
+    }
+}

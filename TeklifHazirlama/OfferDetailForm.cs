@@ -1,0 +1,125 @@
+namespace TeklifHazirlama;
+
+public class OfferDetailForm : Form
+{
+    private readonly DataStore _store;
+    private readonly Offer _offer;
+    private readonly ComboBox _groupCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDown };
+    private readonly DataGridView _groupGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
+    private readonly Label _generalTotalLabel = new() { AutoSize = true };
+    private readonly Label _vatLabel = new() { AutoSize = true };
+    private readonly Label _withVatLabel = new() { AutoSize = true };
+
+    public OfferDetailForm(DataStore store, Offer offer)
+    {
+        _store = store;
+        _offer = offer;
+
+        Text = "Teklif Ana Kalemleri";
+        Width = 1100;
+        Height = 650;
+
+        Controls.Add(BuildLayout());
+        ConfigureGrid();
+        RefreshData();
+    }
+
+    private Control BuildLayout()
+    {
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 5, ColumnCount = 1 };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var title = new Label
+        {
+            Text = "Teklif Ana Kalemleri",
+            Font = new Font(Font.FontFamily, 13, FontStyle.Bold),
+            AutoSize = true,
+            Padding = new Padding(0, 8, 0, 8)
+        };
+
+        var info = new Label
+        {
+            Text = $"Firma: {_offer.CompanyName}    Proje: {_offer.ProjectName}",
+            AutoSize = true,
+            Padding = new Padding(0, 0, 0, 8)
+        };
+
+        var addPanel = new FlowLayoutPanel { AutoSize = true };
+        var addButton = new Button { Text = "Tesisat Grubu Ekle", Width = 160 };
+        addButton.Click += (_, _) => AddGroup();
+        addPanel.Controls.AddRange([new Label { Text = "Yeni Tesisat Grubu", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _groupCombo, addButton]);
+
+        var totalPanel = new TableLayoutPanel { AutoSize = true, ColumnCount = 1 };
+        totalPanel.Controls.Add(_generalTotalLabel);
+        totalPanel.Controls.Add(_vatLabel);
+        totalPanel.Controls.Add(_withVatLabel);
+
+        root.Controls.Add(title, 0, 0);
+        root.Controls.Add(info, 0, 1);
+        root.Controls.Add(addPanel, 0, 2);
+        root.Controls.Add(_groupGrid, 0, 3);
+        root.Controls.Add(totalPanel, 0, 4);
+
+        return root;
+    }
+
+    private void ConfigureGrid()
+    {
+        _groupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tesisat Grubu", DataPropertyName = nameof(InstallationGroup.Name), Width = 250 });
+        _groupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tutar", DataPropertyName = nameof(InstallationGroup.TotalAmount), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
+        _groupGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Aç", Text = "Tesisat Grubunu Aç", UseColumnTextForButtonValue = true, Width = 150 });
+        _groupGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Sil", Text = "Tesisat Grubunu Sil", UseColumnTextForButtonValue = true, Width = 150 });
+
+        _groupGrid.CellContentClick += (_, e) =>
+        {
+            if (e.RowIndex < 0) return;
+            var group = (InstallationGroup)_groupGrid.Rows[e.RowIndex].DataBoundItem;
+
+            if (e.ColumnIndex == 2)
+            {
+                using var form = new WorkDetailForm(_store, _offer, group);
+                form.ShowDialog();
+                _offer.LastUpdated = DateTime.Now;
+                _store.MarkDirty();
+                RefreshData();
+            }
+            else if (e.ColumnIndex == 3)
+            {
+                _offer.InstallationGroups.RemoveAll(g => g.Id == group.Id);
+                _store.MarkDirty();
+                RefreshData();
+            }
+        };
+    }
+
+    private void AddGroup()
+    {
+        var name = _groupCombo.Text.Trim();
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        _offer.InstallationGroups.Add(new InstallationGroup { Name = name });
+        _offer.LastUpdated = DateTime.Now;
+        _store.MarkDirty();
+        RefreshData();
+    }
+
+    private void RefreshData()
+    {
+        _groupCombo.Items.Clear();
+        _groupCombo.Items.AddRange(_store.State.Settings.InstallationGroupTemplates.Cast<object>().ToArray());
+
+        _groupGrid.DataSource = null;
+        _groupGrid.DataSource = _offer.InstallationGroups;
+
+        var general = _offer.TotalAmount;
+        var vat = general * 0.20m;
+
+        _generalTotalLabel.Text = $"Genel Toplam: {general:N2}";
+        _vatLabel.Text = $"KDV Tutarı (%20): {vat:N2}";
+        _withVatLabel.Text = $"KDV Dahil Genel Toplam: {general + vat:N2}";
+    }
+}
