@@ -86,6 +86,9 @@ public class WorkDetailForm : Form
             }
             else if (clickedColumn == DeleteColumnName)
             {
+                var confirm = MessageBox.Show("Bu iş detayını silmek istediğinize emin misiniz?", "İş Detayı Sil", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (confirm != DialogResult.Yes) return;
+
                 _group.WorkDetails.Remove(detail);
                 _store.MarkDirty();
                 RefreshData();

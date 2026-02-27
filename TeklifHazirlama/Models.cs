@@ -18,6 +18,9 @@ public class Offer
 
     [JsonIgnore]
     public decimal TotalAmount => InstallationGroups.Sum(g => g.TotalAmount);
+
+    [JsonIgnore]
+    public decimal TotalWithVat => TotalAmount * 1.20m;
 }
 
 public class InstallationGroup

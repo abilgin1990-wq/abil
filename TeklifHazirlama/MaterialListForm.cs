@@ -2,7 +2,6 @@ namespace TeklifHazirlama;
 
 public class MaterialListForm : Form
 {
-    private const string EditMaterialColumnName = "EditMaterialColumn";
     private const string DeleteMaterialColumnName = "DeleteMaterialColumn";
 
     private readonly DataStore _store;
@@ -18,7 +17,6 @@ public class MaterialListForm : Form
     private readonly Label _materialTotalLabel = new() { AutoSize = true };
     private readonly Label _laborTotalLabel = new() { AutoSize = true };
     private readonly Label _generalTotalLabel = new() { AutoSize = true };
-    private MaterialSelection? _editingMaterial;
 
     public MaterialListForm(DataStore store, Offer offer, InstallationGroup group, WorkDetail detail)
     {
@@ -89,7 +87,6 @@ public class MaterialListForm : Form
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Malzeme Toplam", DataPropertyName = nameof(MaterialSelection.MaterialTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İşçilik Toplam", DataPropertyName = nameof(MaterialSelection.LaborTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Genel Toplam", DataPropertyName = nameof(MaterialSelection.GrandTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
-        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EditMaterialColumnName, HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 90 });
         _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteMaterialColumnName, HeaderText = "Sil", Text = "Malzemeyi Sil", UseColumnTextForButtonValue = true, Width = 110 });
 
         _materialsGrid.CellContentClick += (_, e) =>
@@ -98,15 +95,11 @@ public class MaterialListForm : Form
             if (_materialsGrid.Rows[e.RowIndex].DataBoundItem is not MaterialSelection material) return;
 
             var clickedColumn = _materialsGrid.Columns[e.ColumnIndex].Name;
-            if (clickedColumn == EditMaterialColumnName)
+            if (clickedColumn == DeleteMaterialColumnName)
             {
-                _editingMaterial = material;
-                _materialCombo.SelectedItem = material.MaterialName;
-                _brandCombo.SelectedItem = material.Brand;
-                _quantityText.Text = material.Quantity.ToString();
-            }
-            else if (clickedColumn == DeleteMaterialColumnName)
-            {
+                var confirm = MessageBox.Show("Bu malzemeyi silmek istediğinize emin misiniz?", "Malzeme Sil", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (confirm != DialogResult.Yes) return;
+
                 _detail.Materials.Remove(material);
                 _offer.LastUpdated = DateTime.Now;
                 _store.MarkDirty();
@@ -166,7 +159,6 @@ public class MaterialListForm : Form
         }
 
         var duplicate = _detail.Materials.Any(m =>
-            !ReferenceEquals(m, _editingMaterial) &&
             string.Equals(m.MaterialName, materialName, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(m.Brand, brand, StringComparison.OrdinalIgnoreCase));
 
@@ -191,7 +183,7 @@ public class MaterialListForm : Form
             _ => 1m
         };
 
-        var target = _editingMaterial ?? new MaterialSelection();
+        var target = new MaterialSelection();
         target.MaterialCatalogItemId = item.Id;
         target.MaterialName = item.MaterialName;
         target.Brand = item.Brand;
@@ -203,12 +195,8 @@ public class MaterialListForm : Form
         target.UnitPrice = item.UnitPrice * rate;
         target.LaborUnitPrice = item.LaborUnitPrice;
 
-        if (_editingMaterial == null)
-        {
-            _detail.Materials.Add(target);
-        }
+        _detail.Materials.Add(target);
 
-        _editingMaterial = null;
         _offer.LastUpdated = DateTime.Now;
         _store.MarkDirty();
         RefreshData();

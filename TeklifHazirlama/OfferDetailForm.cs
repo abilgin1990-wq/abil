@@ -94,6 +94,9 @@ public class OfferDetailForm : Form
             }
             else if (clickedColumn == DeleteColumnName)
             {
+                var confirm = MessageBox.Show("Bu tesisat grubunu silmek istediğinize emin misiniz?", "Tesisat Grubu Sil", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (confirm != DialogResult.Yes) return;
+
                 _offer.InstallationGroups.Remove(group);
                 _store.MarkDirty();
                 RefreshData();

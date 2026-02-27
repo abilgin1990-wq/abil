@@ -53,29 +53,47 @@ public class SettingsForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var groupAddPanel = new FlowLayoutPanel { AutoSize = true };
+        var groupAddPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        var addGroupRow = new FlowLayoutPanel { AutoSize = true };
         var addGroupButton = new Button { Text = "Ekle", Width = 80 };
         addGroupButton.Click += (_, _) => AddGroupTemplate();
-        groupAddPanel.Controls.AddRange([new Label { Text = "Tesisat Grubu", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _newGroupText, addGroupButton]);
+        addGroupRow.Controls.AddRange([_newGroupText, addGroupButton]);
+        groupAddPanel.Controls.Add(new Label { Text = "Tesisat Grubu", AutoSize = true });
+        groupAddPanel.Controls.Add(addGroupRow);
 
-        var detailAddPanel = new FlowLayoutPanel { AutoSize = true };
+        var detailAddPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        var groupSelectRow = new FlowLayoutPanel { AutoSize = true };
+        groupSelectRow.Controls.Add(_groupSelectCombo);
+        detailAddPanel.Controls.Add(new Label { Text = "Tesisat Grubu", AutoSize = true });
+        detailAddPanel.Controls.Add(groupSelectRow);
+
+        var detailInputRow = new FlowLayoutPanel { AutoSize = true };
         var addDetailButton = new Button { Text = "İş Detayı Ekle", Width = 100 };
         addDetailButton.Click += (_, _) => AddDetailTemplate();
-        detailAddPanel.Controls.AddRange([
-            new Label { Text = "Grup", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _groupSelectCombo,
-            new Label { Text = "İş Detayı", AutoSize = true, Padding = new Padding(8, 8, 0, 0) }, _newWorkDetailText,
-            addDetailButton
-        ]);
+        detailInputRow.Controls.AddRange([_newWorkDetailText, addDetailButton]);
+        detailAddPanel.Controls.Add(new Label { Text = "İş Detayı", AutoSize = true });
+        detailAddPanel.Controls.Add(detailInputRow);
 
-        var listPanel = new FlowLayoutPanel { Dock = DockStyle.Fill };
+        var listPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
+        var groupListPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        groupListPanel.Controls.Add(new Label { Text = "Tesisat Grubu", AutoSize = true });
+        groupListPanel.Controls.Add(_groupsList);
+
+        var detailListPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        detailListPanel.Controls.Add(new Label { Text = "İş Detayı", AutoSize = true });
+        detailListPanel.Controls.Add(_detailsList);
+
+        var buttonPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         var deleteButton = new Button { Text = "Sil", Width = 80 };
         var renameButton = new Button { Text = "Düzenle", Width = 80 };
         deleteButton.Click += (_, _) => DeleteTemplateItem();
         renameButton.Click += (_, _) => EditTemplateItem();
-        listPanel.Controls.Add(_groupsList);
-        listPanel.Controls.Add(_detailsList);
-        listPanel.Controls.Add(deleteButton);
-        listPanel.Controls.Add(renameButton);
+        buttonPanel.Controls.Add(deleteButton);
+        buttonPanel.Controls.Add(renameButton);
+
+        listPanel.Controls.Add(groupListPanel);
+        listPanel.Controls.Add(detailListPanel);
+        listPanel.Controls.Add(buttonPanel);
 
         _groupsList.SelectedIndexChanged += (_, _) => RefreshDetailsList();
 
