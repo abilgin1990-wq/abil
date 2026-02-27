@@ -123,6 +123,7 @@ public class MainForm : Form
         };
 
 
+        _offersGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _offersGrid.EnableHeadersVisualStyles = false;
         _offersGrid.ColumnHeadersDefaultCellStyle.Font = new Font(_offersGrid.Font, FontStyle.Bold);
         _offersGrid.DataSource = _offersBindingSource;

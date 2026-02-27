@@ -211,6 +211,7 @@ public class SettingsForm : Form
             RefreshMaterialsGrid();
         };
 
+        _materialsGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _materialsGrid.EnableHeadersVisualStyles = false;
         _materialsGrid.ColumnHeadersDefaultCellStyle.Font = new Font(_materialsGrid.Font, FontStyle.Bold);
     }

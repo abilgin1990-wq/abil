@@ -115,6 +115,7 @@ public class WorkDetailForm : Form
         };
 
 
+        _detailsGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _detailsGrid.EnableHeadersVisualStyles = false;
         _detailsGrid.ColumnHeadersDefaultCellStyle.Font = new Font(_detailsGrid.Font, FontStyle.Bold);
         _detailsGrid.DataSource = _detailsBindingSource;
