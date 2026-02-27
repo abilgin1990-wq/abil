@@ -84,8 +84,8 @@ public class MainForm : Form
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Proje", DataPropertyName = nameof(Offer.ProjectName), Width = 200 });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Toplam Tutar", DataPropertyName = nameof(Offer.TotalWithVat), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Son Güncelleme", DataPropertyName = nameof(Offer.LastUpdated), Width = 170, DefaultCellStyle = new DataGridViewCellStyle { Format = "g" } });
-        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DetailColumnName, HeaderText = "Detay", Text = "Teklif Detayını Gör", UseColumnTextForButtonValue = true, Width = 140 });
-        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "Teklifi Sil", UseColumnTextForButtonValue = true, Width = 120 });
+        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DetailColumnName, HeaderText = "Detay", Text = "Teklif Detayını Gör", UseColumnTextForButtonValue = true, Width = 140, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
+        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "Teklifi Sil", UseColumnTextForButtonValue = true, Width = 120, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
 
         _offersGrid.CellContentClick += (_, e) =>
         {

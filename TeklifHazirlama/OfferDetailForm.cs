@@ -84,8 +84,8 @@ public class OfferDetailForm : Form
     {
         _groupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tesisat Grubu", DataPropertyName = nameof(InstallationGroup.Name), Width = 250 });
         _groupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tutar", DataPropertyName = nameof(InstallationGroup.TotalAmount), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
-        _groupGrid.Columns.Add(new DataGridViewButtonColumn { Name = OpenColumnName, HeaderText = "Aç", Text = "Tesisat Grubunu Aç", UseColumnTextForButtonValue = true, Width = 150 });
-        _groupGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "Tesisat Grubunu Sil", UseColumnTextForButtonValue = true, Width = 150 });
+        _groupGrid.Columns.Add(new DataGridViewButtonColumn { Name = OpenColumnName, HeaderText = "Aç", Text = "Tesisat Grubunu Aç", UseColumnTextForButtonValue = true, Width = 150, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
+        _groupGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "Tesisat Grubunu Sil", UseColumnTextForButtonValue = true, Width = 150, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
 
         _groupGrid.CellContentClick += (_, e) =>
         {

@@ -77,8 +77,8 @@ public class WorkDetailForm : Form
     {
         _detailsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İş Detayı", DataPropertyName = nameof(WorkDetail.Name), Width = 280 });
         _detailsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tutar", DataPropertyName = nameof(WorkDetail.GrandTotal), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
-        _detailsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EnterColumnName, HeaderText = "Gir", Text = "İş Detayına Gir", UseColumnTextForButtonValue = true, Width = 130 });
-        _detailsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "İş Detayını Sil", UseColumnTextForButtonValue = true, Width = 130 });
+        _detailsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EnterColumnName, HeaderText = "Gir", Text = "İş Detayına Gir", UseColumnTextForButtonValue = true, Width = 130, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
+        _detailsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "İş Detayını Sil", UseColumnTextForButtonValue = true, Width = 130, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
 
         _detailsGrid.CellContentClick += (_, e) =>
         {
