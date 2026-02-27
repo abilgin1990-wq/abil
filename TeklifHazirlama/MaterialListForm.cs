@@ -155,7 +155,7 @@ public class MaterialListForm : Form
 
         var materialSource = new AutoCompleteStringCollection();
         materialSource.AddRange(materials.ToArray());
-        _materialText.AutoCompleteCustomSource = materialSource;
+        ApplyAutoCompleteSource(_materialText, materialSource);
     }
 
     private void ConfigureBrandAutoComplete()
@@ -174,7 +174,20 @@ public class MaterialListForm : Form
 
         var brandSource = new AutoCompleteStringCollection();
         brandSource.AddRange(brands.ToArray());
-        _brandText.AutoCompleteCustomSource = brandSource;
+        ApplyAutoCompleteSource(_brandText, brandSource);
+    }
+
+
+    private static void ApplyAutoCompleteSource(TextBox textBox, AutoCompleteStringCollection source)
+    {
+        var previousMode = textBox.AutoCompleteMode;
+        var previousSource = textBox.AutoCompleteSource;
+
+        textBox.AutoCompleteMode = AutoCompleteMode.None;
+        textBox.AutoCompleteSource = AutoCompleteSource.None;
+        textBox.AutoCompleteCustomSource = source;
+        textBox.AutoCompleteSource = previousSource;
+        textBox.AutoCompleteMode = previousMode;
     }
 
     private void AddMaterial()
