@@ -1,0 +1,44 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Ana Form";
+}
+
+<h1>Ana Form</h1>
+
+<section class="card">
+    <h2>Tesisat Grubu Ekle</h2>
+    <form asp-action="TesisatGrubuEkle" method="post" class="inline-form">
+        <input asp-for="Input.Ad" placeholder="Örn: Sıhhi Tesisat" />
+        <button type="submit">Ekle</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Tesisat Grupları</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Tesisat Grubu</th>
+            <th>Tutar</th>
+            <th>Detay</th>
+            <th>İşlem</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var grup in Model.Gruplar)
+        {
+            <tr>
+                <td>@grup.Ad</td>
+                <td>@grup.ToplamTutar.ToString("C")</td>
+                <td><a asp-action="TesisatGrubu" asp-route-id="@grup.Id">Aç</a></td>
+                <td>
+                    <form asp-action="TesisatGrubuSil" method="post" onsubmit="return confirm('Silmek istiyor musunuz?');">
+                        <input type="hidden" name="id" value="@grup.Id"/>
+                        <button type="submit" class="danger">Sil</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</section>

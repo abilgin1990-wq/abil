@@ -1,0 +1,48 @@
+@model TesisatDetayViewModel
+@{
+    ViewData["Title"] = $"Tesisat Grubu - {Model.Grup.Ad}";
+}
+
+<h1>@Model.Grup.Ad</h1>
+
+<section class="card">
+    <h2>İş Detayı Ekle</h2>
+    <form asp-action="IsDetayiEkle" method="post" class="inline-form">
+        <input type="hidden" asp-for="YeniIsDetayi.TesisatGrubuId" />
+        <input asp-for="YeniIsDetayi.Ad" placeholder="Örn: Vitrifiye" />
+        <button type="submit">Ekle</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>İş Detayları</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>İş Detayı</th>
+            <th>Toplam Tutar</th>
+            <th>Detay</th>
+            <th>İşlem</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model.Grup.IsDetaylari.OrderBy(x => x.Ad))
+        {
+            <tr>
+                <td>@item.Ad</td>
+                <td>@item.ToplamTutar.ToString("C")</td>
+                <td><a asp-action="IsDetayi" asp-route-id="@item.Id">Aç</a></td>
+                <td>
+                    <form asp-action="IsDetayiSil" method="post" onsubmit="return confirm('Silmek istiyor musunuz?');">
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <input type="hidden" name="tesisatGrubuId" value="@Model.Grup.Id" />
+                        <button type="submit" class="danger">Sil</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <p><strong>Genel Toplam:</strong> @Model.Grup.ToplamTutar.ToString("C")</p>
+</section>

@@ -1,0 +1,102 @@
+@model MalzemeYonetimViewModel
+@{
+    ViewData["Title"] = "Malzeme Yönetimi";
+}
+
+<h1>Malzeme Yönetimi</h1>
+
+<section class="card">
+    <h2>Malzeme Ekle</h2>
+    <form asp-action="MalzemeEkle" method="post" class="grid-form">
+        <label>Tesisat Grubu</label>
+        <select asp-for="Input.TesisatGrubuId" id="tesisatSelect">
+            <option value="">Seçiniz</option>
+            @foreach (var g in Model.Gruplar)
+            {
+                <option value="@g.Id">@g.Ad</option>
+            }
+        </select>
+
+        <label>İş Detayı</label>
+        <select asp-for="Input.IsDetayiId" id="isDetayiSelect">
+            <option value="">Önce Tesisat Grubu Seçiniz</option>
+            @foreach (var g in Model.Gruplar)
+            {
+                foreach (var i in g.IsDetaylari)
+                {
+                    <option value="@i.Id" data-grup="@g.Id">@i.Ad (@g.Ad)</option>
+                }
+            }
+        </select>
+
+        <label>Malzeme İsmi</label>
+        <input asp-for="Input.MalzemeAdi" />
+
+        <label>Marka</label>
+        <input asp-for="Input.Marka" />
+
+        <label>Liste Fiyatı</label>
+        <input asp-for="Input.ListeFiyati" type="number" min="0" step="0.01" />
+
+        <label>İskonto (%)</label>
+        <input asp-for="Input.IskontoOrani" type="number" min="0" max="100" step="0.01" />
+
+        <button type="submit">Ekle</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Tanımlı Malzemeler</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Tesisat Grubu</th>
+            <th>İş Detayı</th>
+            <th>Malzeme</th>
+            <th>Marka</th>
+            <th>Liste Fiyatı</th>
+            <th>İskonto</th>
+            <th>Birim Fiyat</th>
+            <th>İşlem</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var m in Model.Malzemeler)
+        {
+            var grup = Model.Gruplar.FirstOrDefault(x => x.Id == m.TesisatGrubuId);
+            var isDetayi = grup?.IsDetaylari.FirstOrDefault(x => x.Id == m.IsDetayiId);
+            <tr>
+                <td>@grup?.Ad</td>
+                <td>@isDetayi?.Ad</td>
+                <td>@m.MalzemeAdi</td>
+                <td>@m.Marka</td>
+                <td>@m.ListeFiyati.ToString("C")</td>
+                <td>%@m.IskontoOrani</td>
+                <td>@m.BirimFiyat.ToString("C")</td>
+                <td>
+                    <form asp-action="MalzemeSil" method="post" onsubmit="return confirm('Silmek istiyor musunuz?');">
+                        <input type="hidden" name="id" value="@m.Id"/>
+                        <button type="submit" class="danger">Sil</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</section>
+
+<script>
+    const tesisatSelect = document.getElementById('tesisatSelect');
+    const isDetayiSelect = document.getElementById('isDetayiSelect');
+
+    function filtreleIsDetayi() {
+        const secili = tesisatSelect.value;
+        [...isDetayiSelect.options].forEach(opt => {
+            if (!opt.value) return;
+            opt.hidden = opt.dataset.grup !== secili;
+        });
+        isDetayiSelect.value = '';
+    }
+
+    tesisatSelect.addEventListener('change', filtreleIsDetayi);
+</script>

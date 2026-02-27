@@ -1,0 +1,86 @@
+@model IsDetayiViewModel
+@{
+    ViewData["Title"] = $"İş Detayı - {Model.IsDetayi.Ad}";
+}
+
+<h1>@Model.Grup.Ad / @Model.IsDetayi.Ad</h1>
+
+<section class="card">
+    <h2>Malzeme Satırı Ekle</h2>
+
+    @if (!Model.UygunMalzemeler.Any())
+    {
+        <p>Bu iş detayı için malzeme tanımı yok. Önce Malzeme Yönetimi sayfasından ekleyin.</p>
+    }
+    else
+    {
+        <form asp-action="TeklifSatiriEkle" method="post" class="grid-form">
+            <input type="hidden" asp-for="YeniSatir.IsDetayiId" />
+
+            <label>Malzeme / Marka</label>
+            <select asp-for="YeniSatir.MalzemeTanimId">
+                @foreach (var m in Model.UygunMalzemeler)
+                {
+                    <option value="@m.Id">@m.MalzemeAdi - @m.Marka (Liste: @m.ListeFiyati.ToString("C"), İskonto: %@m.IskontoOrani, Birim: @m.BirimFiyat.ToString("C"))</option>
+                }
+            </select>
+
+            <label>Adet</label>
+            <input asp-for="YeniSatir.Adet" type="number" min="1" value="1" />
+
+            <label>İşçilik Birim Fiyat</label>
+            <input asp-for="YeniSatir.IscilikBirimFiyat" type="number" min="0" step="0.01" />
+
+            <button type="submit">Ekle</button>
+        </form>
+    }
+</section>
+
+<section class="card">
+    <h2>Satırlar</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Malzeme</th>
+            <th>Marka</th>
+            <th>Adet</th>
+            <th>Liste Fiyatı</th>
+            <th>İskonto</th>
+            <th>Birim Fiyat</th>
+            <th>İşçilik Birim</th>
+            <th>Malzeme Toplam</th>
+            <th>İşçilik Toplam</th>
+            <th>Satır Toplam</th>
+            <th>İşlem</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var satir in Model.IsDetayi.Satirlar)
+        {
+            <tr>
+                <td>@satir.Malzeme.MalzemeAdi</td>
+                <td>@satir.Malzeme.Marka</td>
+                <td>@satir.Adet</td>
+                <td>@satir.Malzeme.ListeFiyati.ToString("C")</td>
+                <td>%@satir.Malzeme.IskontoOrani</td>
+                <td>@satir.Malzeme.BirimFiyat.ToString("C")</td>
+                <td>@satir.IscilikBirimFiyat.ToString("C")</td>
+                <td>@satir.MalzemeToplam.ToString("C")</td>
+                <td>@satir.IscilikToplam.ToString("C")</td>
+                <td>@satir.Toplam.ToString("C")</td>
+                <td>
+                    <form asp-action="TeklifSatiriSil" method="post" onsubmit="return confirm('Silmek istiyor musunuz?');">
+                        <input type="hidden" name="satirId" value="@satir.Id" />
+                        <input type="hidden" name="isDetayiId" value="@Model.IsDetayi.Id" />
+                        <button type="submit" class="danger">Sil</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <p><strong>Malzeme Toplam:</strong> @Model.IsDetayi.MalzemeToplam.ToString("C")</p>
+    <p><strong>İşçilik Toplam:</strong> @Model.IsDetayi.IscilikToplam.ToString("C")</p>
+    <p><strong>Genel Toplam:</strong> @Model.IsDetayi.ToplamTutar.ToString("C")</p>
+</section>
