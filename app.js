@@ -881,7 +881,6 @@ function showCatalogView() {
       return `<tr>
         <td>${group?.name || '-'}</td>
         <td>${d.name}</td>
-        <td>${d.description || ''}</td>
         <td>
           <div class="actions">
             <button data-edit-global-detail="${d.id}">Düzenle</button>
@@ -899,7 +898,7 @@ function showCatalogView() {
         <label>Tesisat Grubu
           <input name="groupName" required placeholder="Örn. Sıhhi" />
         </label>
-        <label><button class="primary" type="submit">Tesisat Grubu Ekle</button></label>
+        <label style="align-self:end;"><button class="primary" type="submit">Tesisat Grubu Ekle</button></label>
       </form>
       <form id="globalDetailForm" class="grid">
         <label>Tesisat Grubu
@@ -907,9 +906,6 @@ function showCatalogView() {
         </label>
         <label>İş Detayı Grubu
           <input name="detailName" required placeholder="Örn. Vitrifiye" />
-        </label>
-        <label>Detay
-          <input name="description" placeholder="Açıklama" />
         </label>
         <label><button class="primary" type="submit">İş Detayı Grubu Ekle</button></label>
       </form>
@@ -926,8 +922,8 @@ function showCatalogView() {
     <div class="card">
       <h3>İş Detayı Grupları</h3>
       <table>
-        <thead><tr><th>Tesisat Grubu</th><th>İş Detayı Grubu</th><th>Detay</th><th>İşlem</th></tr></thead>
-        <tbody>${detailRows || '<tr><td colspan="4">Henüz iş detayı grubu yok.</td></tr>'}</tbody>
+        <thead><tr><th>Tesisat Grubu</th><th>İş Detayı Grubu</th><th>İşlem</th></tr></thead>
+        <tbody>${detailRows || '<tr><td colspan="3">Henüz iş detayı grubu yok.</td></tr>'}</tbody>
       </table>
     </div>
   `;
@@ -964,7 +960,7 @@ function showCatalogView() {
       id: uid('det'),
       groupId,
       name: detailName,
-      description: String(fd.get('description') || '').trim(),
+      description: '',
     });
     saveState();
     showCatalogView();
@@ -1021,9 +1017,6 @@ function showCatalogView() {
       if (selectedGroup === null) return;
       const name = prompt('İş detayı grubu adı', detail.name);
       if (name === null) return;
-      const desc = prompt('Detay', detail.description || '');
-      if (desc === null) return;
-
       const groupId = selectedGroup.trim();
       const groupExists = global.plumbingGroups.some((g) => g.id === groupId);
       if (!groupExists) {
@@ -1033,7 +1026,7 @@ function showCatalogView() {
 
       detail.groupId = groupId;
       detail.name = name.trim() || detail.name;
-      detail.description = desc.trim();
+      detail.description = '';
 
       state.proposals.forEach((proposal) => {
         proposal.data.jobDetails.forEach((d) => {
