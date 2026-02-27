@@ -10,6 +10,7 @@ public class WorkDetailForm : Form
     private readonly InstallationGroup _group;
     private readonly ComboBox _detailCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDown };
     private readonly DataGridView _detailsGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
+    private readonly BindingSource _detailsBindingSource = new();
     private readonly Label _materialTotalLabel = new() { AutoSize = true };
     private readonly Label _laborTotalLabel = new() { AutoSize = true };
     private readonly Label _generalTotalLabel = new() { AutoSize = true };
@@ -85,11 +86,13 @@ public class WorkDetailForm : Form
             }
             else if (clickedColumn == DeleteColumnName)
             {
-                _group.WorkDetails.RemoveAll(d => d.Id == detail.Id);
+                _group.WorkDetails.Remove(detail);
                 _store.MarkDirty();
                 RefreshData();
             }
         };
+
+        _detailsGrid.DataSource = _detailsBindingSource;
     }
 
     private void AddDetail()
@@ -111,8 +114,12 @@ public class WorkDetailForm : Form
             _detailCombo.Items.AddRange(details.Cast<object>().ToArray());
         }
 
-        _detailsGrid.DataSource = null;
-        _detailsGrid.DataSource = _group.WorkDetails;
+        if (!ReferenceEquals(_detailsBindingSource.DataSource, _group.WorkDetails))
+        {
+            _detailsBindingSource.DataSource = _group.WorkDetails;
+        }
+
+        _detailsBindingSource.ResetBindings(false);
 
         _materialTotalLabel.Text = $"Malzemelerin Toplamı: {_group.WorkDetails.Sum(x => x.MaterialTotal):N2}";
         _laborTotalLabel.Text = $"İşçiliklerin Toplamı: {_group.WorkDetails.Sum(x => x.LaborTotal):N2}";
