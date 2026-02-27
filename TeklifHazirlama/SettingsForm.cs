@@ -55,35 +55,34 @@ public class SettingsForm : Form
 
         var groupAddPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         var addGroupRow = new FlowLayoutPanel { AutoSize = true };
-        var addGroupButton = new Button { Text = "Ekle", Width = 80 };
+        var addGroupButton = new Button { Text = "Tesisat Grubu Ekle", Width = 140 };
         addGroupButton.Click += (_, _) => AddGroupTemplate();
         addGroupRow.Controls.AddRange([_newGroupText, addGroupButton]);
         groupAddPanel.Controls.Add(new Label { Text = "Tesisat Grubu", AutoSize = true });
         groupAddPanel.Controls.Add(addGroupRow);
 
-        var detailAddPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        var groupSelectRow = new FlowLayoutPanel { AutoSize = true };
-        groupSelectRow.Controls.Add(_groupSelectCombo);
-        detailAddPanel.Controls.Add(new Label { Text = "Tesisat Grubu", AutoSize = true });
-        detailAddPanel.Controls.Add(groupSelectRow);
+        var detailPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        detailPanel.Controls.Add(new Label { Text = "Tesisat Grubu", AutoSize = true });
 
-        var detailInputRow = new FlowLayoutPanel { AutoSize = true };
+        var detailRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
         var addDetailButton = new Button { Text = "İş Detayı Ekle", Width = 100 };
         addDetailButton.Click += (_, _) => AddDetailTemplate();
-        detailInputRow.Controls.AddRange([_newWorkDetailText, addDetailButton]);
-        detailAddPanel.Controls.Add(new Label { Text = "İş Detayı", AutoSize = true });
-        detailAddPanel.Controls.Add(detailInputRow);
+        detailRow.Controls.AddRange([_groupSelectCombo, _newWorkDetailText, addDetailButton]);
 
-        var listPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
-        var groupListPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        groupListPanel.Controls.Add(new Label { Text = "Tesisat Grubu", AutoSize = true });
-        groupListPanel.Controls.Add(_groupsList);
+        detailPanel.Controls.Add(new Label { Text = "İş Detayı", AutoSize = true });
+        detailPanel.Controls.Add(detailRow);
 
-        var detailListPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        detailListPanel.Controls.Add(new Label { Text = "İş Detayı", AutoSize = true });
-        detailListPanel.Controls.Add(_detailsList);
+        var listRoot = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 2, AutoSize = true };
+        listRoot.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        listRoot.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        listRoot.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        listRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        listRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var buttonPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        listRoot.Controls.Add(new Label { Text = "Tesisat Grubu", AutoSize = true }, 0, 0);
+        listRoot.Controls.Add(new Label { Text = "İş Detayı", AutoSize = true }, 1, 0);
+
+        var buttonPanel = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(10, 0, 0, 0) };
         var deleteButton = new Button { Text = "Sil", Width = 80 };
         var renameButton = new Button { Text = "Düzenle", Width = 80 };
         deleteButton.Click += (_, _) => DeleteTemplateItem();
@@ -91,15 +90,15 @@ public class SettingsForm : Form
         buttonPanel.Controls.Add(deleteButton);
         buttonPanel.Controls.Add(renameButton);
 
-        listPanel.Controls.Add(groupListPanel);
-        listPanel.Controls.Add(detailListPanel);
-        listPanel.Controls.Add(buttonPanel);
+        listRoot.Controls.Add(_groupsList, 0, 1);
+        listRoot.Controls.Add(_detailsList, 1, 1);
+        listRoot.Controls.Add(buttonPanel, 2, 1);
 
         _groupsList.SelectedIndexChanged += (_, _) => RefreshDetailsList();
 
         root.Controls.Add(groupAddPanel, 0, 0);
-        root.Controls.Add(detailAddPanel, 0, 1);
-        root.Controls.Add(listPanel, 0, 2);
+        root.Controls.Add(detailPanel, 0, 1);
+        root.Controls.Add(listRoot, 0, 2);
         tab.Controls.Add(root);
         return tab;
     }
@@ -121,25 +120,34 @@ public class SettingsForm : Form
         _currencyCombo.Items.AddRange(["TRY", "USD", "EUR"]);
         _currencyCombo.SelectedIndex = 0;
 
-        var addPanel = new FlowLayoutPanel { AutoSize = true };
-        var addButton = new Button { Text = "Ekle", Width = 80 };
-        addButton.Click += (_, _) => AddMaterialCatalog();
-        addPanel.Controls.AddRange([
+        var addArea = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+
+        var row1 = new FlowLayoutPanel { AutoSize = true };
+        row1.Controls.AddRange([
             new Label { Text = "Grup", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _matGroupCombo,
             new Label { Text = "İş Detayı", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _matDetailCombo,
             new Label { Text = "Malzeme", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _matNameText,
-            new Label { Text = "Marka", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _brandText,
-            new Label { Text = "Fiyat", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _priceText,
-            _currencyCombo,
+            new Label { Text = "Marka", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _brandText
+        ]);
+
+        var row2 = new FlowLayoutPanel { AutoSize = true };
+        var addButton = new Button { Text = "Ekle", Width = 80 };
+        addButton.Click += (_, _) => AddMaterialCatalog();
+        row2.Controls.AddRange([
+            new Label { Text = "Fiyat", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _priceText,
+            new Label { Text = "Para Birimi", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _currencyCombo,
             new Label { Text = "İskonto", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _discountText,
             new Label { Text = "İşçilik", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _laborText,
             addButton
         ]);
 
+        addArea.Controls.Add(row1);
+        addArea.Controls.Add(row2);
+
         _matGroupCombo.SelectedIndexChanged += (_, _) => RefreshMaterialDetailCombo();
 
         root.Controls.Add(ratePanel, 0, 0);
-        root.Controls.Add(addPanel, 0, 1);
+        root.Controls.Add(addArea, 0, 1);
         root.Controls.Add(_materialsGrid, 0, 2);
 
         tab.Controls.Add(root);

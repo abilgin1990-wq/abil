@@ -33,25 +33,22 @@ public class MainForm : Form
 
     private Control BuildLayout()
     {
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, ColumnCount = 1 };
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2, ColumnCount = 1 };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        var addButton = new Button { Text = "Ekle", Width = 120, Height = 32, Margin = new Padding(20, 2, 0, 0) };
+        addButton.Click += (_, _) => AddOffer();
 
         var header = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
         header.Controls.AddRange([
             new Label { Text = "Firma Adı", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _companyText,
-            new Label { Text = "Proje Adı", AutoSize = true, Padding = new Padding(20, 8, 0, 0) }, _projectText
+            new Label { Text = "Proje Adı", AutoSize = true, Padding = new Padding(20, 8, 0, 0) }, _projectText,
+            addButton
         ]);
 
-        var addButton = new Button { Text = "Ekle", Width = 120, Height = 32, Left = 10, Top = 4 };
-        addButton.Click += (_, _) => AddOffer();
-        var addPanel = new Panel { Dock = DockStyle.Fill, Height = 40 };
-        addPanel.Controls.Add(addButton);
-
         root.Controls.Add(header, 0, 0);
-        root.Controls.Add(addPanel, 0, 1);
-        root.Controls.Add(_offersGrid, 0, 2);
+        root.Controls.Add(_offersGrid, 0, 1);
 
         return root;
     }
