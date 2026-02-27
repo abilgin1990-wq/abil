@@ -165,14 +165,23 @@ public class SettingsForm : Form
         var addButton = new Button { Text = "Ekle", Width = 80 };
         addButton.Click += (_, _) => AddMaterialCatalog();
 
-        var secondRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        secondRow.Controls.AddRange([
-            new Label { Text = "Fiyat", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _priceText,
-            new Label { Text = "Para Birimi", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _currencyCombo,
-            new Label { Text = "İskonto", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _discountText,
-            new Label { Text = "İşçilik", AutoSize = true, Padding = new Padding(6, 8, 0, 0) }, _laborText,
-            addButton
-        ]);
+        var secondRow = new TableLayoutPanel { AutoSize = true, ColumnCount = 5, RowCount = 2 };
+        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        secondRow.Controls.Add(new Label { Text = "Fiyat", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 0, 0);
+        secondRow.Controls.Add(new Label { Text = "Para Birimi", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 1, 0);
+        secondRow.Controls.Add(new Label { Text = "İskonto", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 2, 0);
+        secondRow.Controls.Add(new Label { Text = "İşçilik", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 3, 0);
+
+        secondRow.Controls.Add(_priceText, 0, 1);
+        secondRow.Controls.Add(_currencyCombo, 1, 1);
+        secondRow.Controls.Add(_discountText, 2, 1);
+        secondRow.Controls.Add(_laborText, 3, 1);
+        secondRow.Controls.Add(addButton, 4, 1);
 
         var formArea = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         formArea.Controls.Add(addArea);
