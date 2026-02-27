@@ -26,6 +26,23 @@ document.getElementById('navMaterials').addEventListener('click', () => showMate
 document.getElementById('selectStorageDir').addEventListener('click', selectStorageDirectory);
 document.getElementById('loadStorageDir').addEventListener('click', loadStateFromSelectedDirectory);
 
+const settingsMenu = document.getElementById('settingsMenu');
+const navSettings = document.getElementById('navSettings');
+if (settingsMenu && navSettings) {
+  navSettings.addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsMenu.classList.toggle('open');
+  });
+
+  settingsMenu.querySelectorAll('.settings-dropdown button').forEach((btn) => {
+    btn.addEventListener('click', () => settingsMenu.classList.remove('open'));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!settingsMenu.contains(e.target)) settingsMenu.classList.remove('open');
+  });
+}
+
 showQuotesView();
 initializeDirectorySync();
 

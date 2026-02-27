@@ -59,6 +59,30 @@ header h1 {
   align-items: flex-start;
 }
 
+.settings-menu {
+  position: relative;
+}
+
+.settings-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 260px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+  padding: 0.45rem;
+  z-index: 50;
+}
+
+.settings-menu.open .settings-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
 main {
   padding: 1rem;
   max-width: 1200px;
