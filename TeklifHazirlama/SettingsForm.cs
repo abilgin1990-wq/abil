@@ -143,7 +143,7 @@ public class SettingsForm : Form
         _currencyCombo.Items.AddRange(["TRY", "USD", "EUR"]);
         _currencyCombo.SelectedIndex = 0;
 
-        var addArea = new TableLayoutPanel { AutoSize = true, ColumnCount = 5, RowCount = 2 };
+        var addArea = new TableLayoutPanel { AutoSize = true, ColumnCount = 5, RowCount = 4 };
         addArea.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         addArea.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         addArea.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -151,41 +151,31 @@ public class SettingsForm : Form
         addArea.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
         addArea.Controls.Add(new Label { Text = "Grup", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 0, 0);
-        addArea.Controls.Add(_matGroupCombo, 0, 1);
-
         addArea.Controls.Add(new Label { Text = "İş Detayı", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 1, 0);
-        addArea.Controls.Add(_matDetailCombo, 1, 1);
-
         addArea.Controls.Add(new Label { Text = "Malzeme", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 2, 0);
-        addArea.Controls.Add(_matNameText, 2, 1);
-
         addArea.Controls.Add(new Label { Text = "Marka", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 3, 0);
+
+        addArea.Controls.Add(_matGroupCombo, 0, 1);
+        addArea.Controls.Add(_matDetailCombo, 1, 1);
+        addArea.Controls.Add(_matNameText, 2, 1);
         addArea.Controls.Add(_brandText, 3, 1);
 
-        var addButton = new Button { Text = "Ekle", Width = 80 };
+        addArea.Controls.Add(new Label { Text = "Fiyat", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 0, 2);
+        addArea.Controls.Add(new Label { Text = "Para Birimi", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 1, 2);
+        addArea.Controls.Add(new Label { Text = "İskonto", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 2, 2);
+        addArea.Controls.Add(new Label { Text = "İşçilik", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 3, 2);
+
+        addArea.Controls.Add(_priceText, 0, 3);
+        addArea.Controls.Add(_currencyCombo, 1, 3);
+        addArea.Controls.Add(_discountText, 2, 3);
+        addArea.Controls.Add(_laborText, 3, 3);
+
+        var addButton = new Button { Text = "Ekle", Width = 80, Anchor = AnchorStyles.Bottom | AnchorStyles.Left };
         addButton.Click += (_, _) => AddMaterialCatalog();
-
-        var secondRow = new TableLayoutPanel { AutoSize = true, ColumnCount = 5, RowCount = 2 };
-        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        secondRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-        secondRow.Controls.Add(new Label { Text = "Fiyat", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 0, 0);
-        secondRow.Controls.Add(new Label { Text = "Para Birimi", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 1, 0);
-        secondRow.Controls.Add(new Label { Text = "İskonto", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 2, 0);
-        secondRow.Controls.Add(new Label { Text = "İşçilik", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 3, 0);
-
-        secondRow.Controls.Add(_priceText, 0, 1);
-        secondRow.Controls.Add(_currencyCombo, 1, 1);
-        secondRow.Controls.Add(_discountText, 2, 1);
-        secondRow.Controls.Add(_laborText, 3, 1);
-        secondRow.Controls.Add(addButton, 4, 1);
+        addArea.Controls.Add(addButton, 4, 3);
 
         var formArea = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         formArea.Controls.Add(addArea);
-        formArea.Controls.Add(secondRow);
 
         _matGroupCombo.SelectedIndexChanged += (_, _) => RefreshMaterialDetailCombo();
 
