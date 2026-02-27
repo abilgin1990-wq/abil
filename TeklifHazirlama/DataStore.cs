@@ -19,8 +19,42 @@ public class DataStore
     {
         var json = File.ReadAllText(path);
         State = JsonSerializer.Deserialize<AppState>(json, _jsonOptions) ?? new AppState();
+        RefreshCatalogChangeFlags();
         CurrentPath = path;
         IsDirty = false;
+    }
+
+    public void RefreshCatalogChangeFlags()
+    {
+        foreach (var offer in State.Offers)
+        {
+            foreach (var group in offer.InstallationGroups)
+            {
+                foreach (var detail in group.WorkDetails)
+                {
+                    foreach (var material in detail.Materials)
+                    {
+                        material.IsCatalogOutdated = IsMaterialOutdated(material);
+                    }
+                }
+            }
+        }
+    }
+
+    private bool IsMaterialOutdated(MaterialSelection material)
+    {
+        var catalogItem = State.Settings.MaterialCatalog.FirstOrDefault(item => item.Id == material.MaterialCatalogItemId);
+        if (catalogItem == null)
+        {
+            return true;
+        }
+
+        return !string.Equals(material.MaterialName, catalogItem.MaterialName, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(material.Brand, catalogItem.Brand, StringComparison.OrdinalIgnoreCase)
+            || material.OriginalListPrice != catalogItem.ListPrice
+            || !string.Equals(material.Currency, catalogItem.Currency, StringComparison.OrdinalIgnoreCase)
+            || material.DiscountPercent != catalogItem.DiscountPercent
+            || material.LaborUnitPrice != catalogItem.LaborUnitPrice;
     }
 
     public void Save()

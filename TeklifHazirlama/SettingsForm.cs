@@ -220,6 +220,7 @@ public class SettingsForm : Form
                     item.DiscountPercent = updatedItem.DiscountPercent;
                     item.LaborUnitPrice = updatedItem.LaborUnitPrice;
 
+                    _store.RefreshCatalogChangeFlags();
                     _store.MarkDirty();
                     RefreshMaterialsGrid();
                 }
@@ -227,6 +228,7 @@ public class SettingsForm : Form
             else if (clickedColumn == DeleteMaterialColumnName)
             {
                 _store.State.Settings.MaterialCatalog.Remove(item);
+                _store.RefreshCatalogChangeFlags();
                 _store.MarkDirty();
                 RefreshMaterialsGrid();
             }
@@ -360,6 +362,7 @@ public class SettingsForm : Form
         _discountText.Text = "0";
         _laborText.Text = "0";
 
+        _store.RefreshCatalogChangeFlags();
         _store.MarkDirty();
         RefreshMaterialsGrid();
     }

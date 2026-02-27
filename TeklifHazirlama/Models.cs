@@ -17,6 +17,12 @@ public class Offer
     public List<InstallationGroup> InstallationGroups { get; set; } = [];
 
     [JsonIgnore]
+    public bool HasOutdatedMaterials => InstallationGroups.Any(g => g.HasOutdatedMaterials);
+
+    [JsonIgnore]
+    public string DisplayCompanyName => HasOutdatedMaterials ? $"*{CompanyName}" : CompanyName;
+
+    [JsonIgnore]
     public decimal TotalAmount => InstallationGroups.Sum(g => g.TotalAmount);
 
     [JsonIgnore]
@@ -30,6 +36,12 @@ public class InstallationGroup
     public List<WorkDetail> WorkDetails { get; set; } = [];
 
     [JsonIgnore]
+    public bool HasOutdatedMaterials => WorkDetails.Any(d => d.HasOutdatedMaterials);
+
+    [JsonIgnore]
+    public string DisplayName => HasOutdatedMaterials ? $"*{Name}" : Name;
+
+    [JsonIgnore]
     public decimal TotalAmount => WorkDetails.Sum(d => d.GrandTotal);
 }
 
@@ -38,6 +50,12 @@ public class WorkDetail
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public List<MaterialSelection> Materials { get; set; } = [];
+
+    [JsonIgnore]
+    public bool HasOutdatedMaterials => Materials.Any(m => m.IsCatalogOutdated);
+
+    [JsonIgnore]
+    public string DisplayName => HasOutdatedMaterials ? $"*{Name}" : Name;
 
     [JsonIgnore]
     public decimal MaterialTotal => Materials.Sum(m => m.MaterialTotal);
@@ -77,6 +95,10 @@ public class MaterialSelection
     public decimal DiscountPercent { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal LaborUnitPrice { get; set; }
+    public bool IsCatalogOutdated { get; set; }
+
+    [JsonIgnore]
+    public string DisplayMaterialName => IsCatalogOutdated ? $"*{MaterialName}" : MaterialName;
 
     [JsonIgnore]
     public decimal MaterialTotal => Quantity * UnitPrice;

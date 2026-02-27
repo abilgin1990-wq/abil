@@ -75,7 +75,7 @@ public class WorkDetailForm : Form
 
     private void ConfigureGrid()
     {
-        _detailsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İş Detayı", DataPropertyName = nameof(WorkDetail.Name), Width = 280 });
+        _detailsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İş Detayı", DataPropertyName = nameof(WorkDetail.DisplayName), Width = 280 });
         _detailsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tutar", DataPropertyName = nameof(WorkDetail.GrandTotal), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _detailsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EnterColumnName, HeaderText = "Gir", Text = "İş Detayına Gir", UseColumnTextForButtonValue = true, Width = 130, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
         _detailsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "İş Detayını Sil", UseColumnTextForButtonValue = true, Width = 130, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
@@ -140,6 +140,7 @@ public class WorkDetailForm : Form
 
     private void RefreshData()
     {
+        _store.RefreshCatalogChangeFlags();
         _detailCombo.Items.Clear();
         if (_store.State.Settings.WorkDetailTemplatesByGroup.TryGetValue(_group.Name, out var details))
         {

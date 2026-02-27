@@ -80,7 +80,7 @@ public class MainForm : Form
 
     private void ConfigureOfferGrid()
     {
-        _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Firma", DataPropertyName = nameof(Offer.CompanyName), Width = 200 });
+        _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Firma", DataPropertyName = nameof(Offer.DisplayCompanyName), Width = 200 });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Proje", DataPropertyName = nameof(Offer.ProjectName), Width = 200 });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Toplam Tutar", DataPropertyName = nameof(Offer.TotalWithVat), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Son Güncelleme", DataPropertyName = nameof(Offer.LastUpdated), Width = 170, DefaultCellStyle = new DataGridViewCellStyle { Format = "g" } });
@@ -165,6 +165,8 @@ public class MainForm : Form
 
     private void RefreshOfferGrid()
     {
+        _store.RefreshCatalogChangeFlags();
+
         if (!ReferenceEquals(_offersBindingSource.DataSource, _store.State.Offers))
         {
             _offersBindingSource.DataSource = _store.State.Offers;

@@ -2,6 +2,7 @@ namespace TeklifHazirlama;
 
 public class MaterialListForm : Form
 {
+    private const string UpdateMaterialColumnName = "UpdateMaterialColumn";
     private const string DeleteMaterialColumnName = "DeleteMaterialColumn";
 
     private readonly DataStore _store;
@@ -113,7 +114,7 @@ public class MaterialListForm : Form
 
     private void ConfigureGrid()
     {
-        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Malzeme", DataPropertyName = nameof(MaterialSelection.MaterialName), Width = 140 });
+        _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Malzeme", DataPropertyName = nameof(MaterialSelection.DisplayMaterialName), Width = 140 });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Marka", DataPropertyName = nameof(MaterialSelection.Brand), Width = 120 });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Adet", DataPropertyName = nameof(MaterialSelection.Quantity), Width = 70 });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Liste Fiyatı", DataPropertyName = nameof(MaterialSelection.OriginalListPrice), Width = 110, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
@@ -124,7 +125,8 @@ public class MaterialListForm : Form
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Malzeme Toplam", DataPropertyName = nameof(MaterialSelection.MaterialTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İşçilik Toplam", DataPropertyName = nameof(MaterialSelection.LaborTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Genel Toplam", DataPropertyName = nameof(MaterialSelection.GrandTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
-        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteMaterialColumnName, HeaderText = "Sil", Text = "Malzemeyi Sil", UseColumnTextForButtonValue = true, Width = 110 });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = UpdateMaterialColumnName, HeaderText = "Güncelle", Text = "Güncelle", UseColumnTextForButtonValue = false, Width = 110, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteMaterialColumnName, HeaderText = "Sil", Text = "Malzemeyi Sil", UseColumnTextForButtonValue = true, Width = 110, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
 
         _materialsGrid.CellContentClick += (_, e) =>
         {
@@ -132,7 +134,21 @@ public class MaterialListForm : Form
             if (_materialsGrid.Rows[e.RowIndex].DataBoundItem is not MaterialSelection material) return;
 
             var clickedColumn = _materialsGrid.Columns[e.ColumnIndex].Name;
-            if (clickedColumn == DeleteMaterialColumnName)
+            if (clickedColumn == UpdateMaterialColumnName)
+            {
+                if (!material.IsCatalogOutdated) return;
+
+                if (!TryUpdateMaterialFromCatalog(material))
+                {
+                    MessageBox.Show("Bu malzeme için katalog kaydı bulunamadı.");
+                    return;
+                }
+
+                _offer.LastUpdated = DateTime.Now;
+                _store.MarkDirty();
+                RefreshData();
+            }
+            else if (clickedColumn == DeleteMaterialColumnName)
             {
                 var confirm = MessageBox.Show("Bu malzemeyi silmek istediğinize emin misiniz?", "Malzeme Sil", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (confirm != DialogResult.Yes) return;
@@ -182,6 +198,15 @@ public class MaterialListForm : Form
         _brandText.Leave += (_, _) => BeginInvoke(new Action(() => { if (!_brandSuggestions.Focused) _brandSuggestions.Visible = false; }));
         _materialSuggestions.Leave += (_, _) => _materialSuggestions.Visible = false;
         _brandSuggestions.Leave += (_, _) => _brandSuggestions.Visible = false;
+
+        _materialsGrid.CellFormatting += (_, e) =>
+        {
+            if (e.RowIndex < 0 || _materialsGrid.Columns[e.ColumnIndex].Name != UpdateMaterialColumnName) return;
+            if (_materialsGrid.Rows[e.RowIndex].DataBoundItem is not MaterialSelection material) return;
+
+            e.Value = material.IsCatalogOutdated ? "Güncelle" : string.Empty;
+            e.FormattingApplied = true;
+        };
 
         _materialsGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _materialsGrid.EnableHeadersVisualStyles = false;
@@ -280,6 +305,35 @@ public class MaterialListForm : Form
         }
     }
 
+    private bool TryUpdateMaterialFromCatalog(MaterialSelection material)
+    {
+        var item = _store.State.Settings.MaterialCatalog.FirstOrDefault(x => x.Id == material.MaterialCatalogItemId);
+        if (item == null) return false;
+
+        ApplyCatalogItem(material, item);
+        return true;
+    }
+
+    private void ApplyCatalogItem(MaterialSelection target, MaterialCatalogItem item)
+    {
+        var rate = item.Currency switch
+        {
+            "USD" => _store.State.Settings.DollarRate,
+            "EUR" => _store.State.Settings.EuroRate,
+            _ => 1m
+        };
+
+        target.MaterialName = item.MaterialName;
+        target.Brand = item.Brand;
+        target.OriginalListPrice = item.ListPrice;
+        target.Currency = item.Currency;
+        target.ListPrice = item.ListPrice * rate;
+        target.DiscountPercent = item.DiscountPercent;
+        target.UnitPrice = item.UnitPrice * rate;
+        target.LaborUnitPrice = item.LaborUnitPrice;
+        target.IsCatalogOutdated = false;
+    }
+
     private void AddMaterial()
     {
         var materialName = _materialText.Text.Trim();
@@ -318,25 +372,13 @@ public class MaterialListForm : Form
             return;
         }
 
-        var rate = item.Currency switch
+        var target = new MaterialSelection
         {
-            "USD" => _store.State.Settings.DollarRate,
-            "EUR" => _store.State.Settings.EuroRate,
-            _ => 1m
+            MaterialCatalogItemId = item.Id,
+            Quantity = quantity
         };
 
-        var target = new MaterialSelection();
-        target.MaterialCatalogItemId = item.Id;
-        target.MaterialName = item.MaterialName;
-        target.Brand = item.Brand;
-        target.Quantity = quantity;
-        target.OriginalListPrice = item.ListPrice;
-        target.Currency = item.Currency;
-        target.ListPrice = item.ListPrice * rate;
-        target.DiscountPercent = item.DiscountPercent;
-        target.UnitPrice = item.UnitPrice * rate;
-        target.LaborUnitPrice = item.LaborUnitPrice;
-
+        ApplyCatalogItem(target, item);
         _detail.Materials.Add(target);
 
         _offer.LastUpdated = DateTime.Now;
@@ -346,6 +388,8 @@ public class MaterialListForm : Form
 
     private void RefreshData()
     {
+        _store.RefreshCatalogChangeFlags();
+
         if (!ReferenceEquals(_materialsBindingSource.DataSource, _detail.Materials))
         {
             _materialsBindingSource.DataSource = _detail.Materials;
