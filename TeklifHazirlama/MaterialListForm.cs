@@ -13,6 +13,7 @@ public class MaterialListForm : Form
     private readonly ComboBox _brandCombo = new() { Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly TextBox _quantityText = new() { Width = 80, Text = "1" };
     private readonly DataGridView _materialsGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
+    private readonly BindingSource _materialsBindingSource = new();
     private readonly Label _materialTotalLabel = new() { AutoSize = true };
     private readonly Label _laborTotalLabel = new() { AutoSize = true };
     private readonly Label _generalTotalLabel = new() { AutoSize = true };
@@ -99,6 +100,8 @@ public class MaterialListForm : Form
         };
 
         _materialCombo.SelectedIndexChanged += (_, _) => BindBrandCombo();
+
+        _materialsGrid.DataSource = _materialsBindingSource;
     }
 
     private void BindMaterialCombos()
@@ -181,8 +184,12 @@ public class MaterialListForm : Form
 
     private void RefreshData()
     {
-        _materialsGrid.DataSource = null;
-        _materialsGrid.DataSource = _detail.Materials;
+        if (!ReferenceEquals(_materialsBindingSource.DataSource, _detail.Materials))
+        {
+            _materialsBindingSource.DataSource = _detail.Materials;
+        }
+
+        _materialsBindingSource.ResetBindings(false);
 
         _materialTotalLabel.Text = $"Malzemelerin Toplam Tutarı: {_detail.MaterialTotal:N2}";
         _laborTotalLabel.Text = $"İşçilik Toplam Tutarı: {_detail.LaborTotal:N2}";
