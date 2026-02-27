@@ -41,7 +41,24 @@ public class SettingsForm : Form
 
     private Control BuildTabs()
     {
-        var tabs = new TabControl { Dock = DockStyle.Fill };
+        var tabs = new TabControl
+        {
+            Dock = DockStyle.Fill,
+            DrawMode = TabDrawMode.OwnerDrawFixed
+        };
+
+        tabs.DrawItem += (_, e) =>
+        {
+            var page = tabs.TabPages[e.Index];
+            var selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+            var backColor = selected ? ButtonStyler.PrimaryBlue : SystemColors.Control;
+            var textColor = selected ? Color.White : SystemColors.ControlText;
+
+            using var brush = new SolidBrush(backColor);
+            e.Graphics.FillRectangle(brush, e.Bounds);
+            TextRenderer.DrawText(e.Graphics, page.Text, tabs.Font, e.Bounds, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        };
+
         tabs.TabPages.Add(BuildGroupDetailTab());
         tabs.TabPages.Add(BuildMaterialTab());
         return tabs;

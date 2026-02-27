@@ -2,7 +2,7 @@ namespace TeklifHazirlama;
 
 public static class ButtonStyler
 {
-    private static readonly Color PrimaryBlue = Color.FromArgb(70, 130, 200);
+    public static readonly Color PrimaryBlue = Color.FromArgb(70, 130, 200);
 
     public static void Apply(Control root)
     {
