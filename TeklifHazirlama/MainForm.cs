@@ -61,16 +61,18 @@ public class MainForm : Form
         var menu = new MenuStrip();
         var file = new ToolStripMenuItem("Dosya");
         var settings = new ToolStripMenuItem("Ayarlar");
-        var save = new ToolStripMenuItem("Programı Kaydet");
-        var saveAs = new ToolStripMenuItem("Programı Farklı Kaydet");
+        var load = new ToolStripMenuItem("Yükle");
+        var save = new ToolStripMenuItem("Kaydet");
+        var saveAs = new ToolStripMenuItem("Farklı Kaydet");
         var close = new ToolStripMenuItem("Kapat");
 
         settings.Click += (_, _) => OpenSettings();
+        load.Click += (_, _) => LoadFromFile();
         save.Click += (_, _) => Save();
         saveAs.Click += (_, _) => SaveAs();
         close.Click += (_, _) => Close();
 
-        file.DropDownItems.AddRange([settings, save, saveAs, close]);
+        file.DropDownItems.AddRange([settings, load, save, saveAs, close]);
         menu.Items.Add(file);
 
         MainMenuStrip = menu;
@@ -89,10 +91,7 @@ public class MainForm : Form
         _offersGrid.CellContentClick += (_, e) =>
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-            if (_offersGrid.Rows[e.RowIndex].DataBoundItem is not Offer offer)
-            {
-                return;
-            }
+            if (_offersGrid.Rows[e.RowIndex].DataBoundItem is not Offer offer) return;
 
             var clickedColumn = _offersGrid.Columns[e.ColumnIndex].Name;
             if (clickedColumn == DetailColumnName)
@@ -116,16 +115,28 @@ public class MainForm : Form
 
     private void AddOffer()
     {
-        if (string.IsNullOrWhiteSpace(_companyText.Text) || string.IsNullOrWhiteSpace(_projectText.Text))
+        var companyName = _companyText.Text.Trim();
+        var projectName = _projectText.Text.Trim();
+        if (string.IsNullOrWhiteSpace(companyName) || string.IsNullOrWhiteSpace(projectName))
         {
             MessageBox.Show("Firma ve proje alanları zorunludur.");
             return;
         }
 
+        var isDuplicate = _store.State.Offers.Any(o =>
+            string.Equals(o.CompanyName, companyName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(o.ProjectName, projectName, StringComparison.OrdinalIgnoreCase));
+
+        if (isDuplicate)
+        {
+            MessageBox.Show("Aynı firma adı ve proje ismi ile teklif zaten mevcut.");
+            return;
+        }
+
         _store.State.Offers.Add(new Offer
         {
-            CompanyName = _companyText.Text.Trim(),
-            ProjectName = _projectText.Text.Trim(),
+            CompanyName = companyName,
+            ProjectName = projectName,
             LastUpdated = DateTime.Now
         });
 
@@ -150,6 +161,24 @@ public class MainForm : Form
         using var settingsForm = new SettingsForm(_store);
         settingsForm.ShowDialog();
         RefreshOfferGrid();
+    }
+
+    private void LoadFromFile()
+    {
+        if (!PromptToSaveChanges()) return;
+
+        using var dialog = new OpenFileDialog { Filter = "Teklif Dosyası (*.json)|*.json", Title = "Yükle" };
+        if (dialog.ShowDialog() != DialogResult.OK) return;
+
+        try
+        {
+            _store.Load(dialog.FileName);
+            RefreshOfferGrid();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Yükleme sırasında hata: {ex.Message}");
+        }
     }
 
     private void Save()
@@ -191,7 +220,12 @@ public class MainForm : Form
 
         var result = MessageBox.Show("Değişiklikleri kaydetmek ister misiniz?", "Kapat", MessageBoxButtons.YesNoCancel);
         if (result == DialogResult.Cancel) return false;
-        if (result == DialogResult.Yes) Save();
+        if (result == DialogResult.Yes)
+        {
+            Save();
+            return !_store.IsDirty;
+        }
+
         return true;
     }
 }

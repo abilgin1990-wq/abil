@@ -69,6 +69,8 @@ public class MaterialSelection
     public string Brand { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public decimal ListPrice { get; set; }
+    public decimal OriginalListPrice { get; set; }
+    public string Currency { get; set; } = "TRY";
     public decimal DiscountPercent { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal LaborUnitPrice { get; set; }

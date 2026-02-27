@@ -7,7 +7,7 @@ public class OfferDetailForm : Form
 
     private readonly DataStore _store;
     private readonly Offer _offer;
-    private readonly ComboBox _groupCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDown };
+    private readonly ComboBox _groupCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly DataGridView _groupGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
     private readonly BindingSource _groupBindingSource = new();
     private readonly Label _generalTotalLabel = new() { AutoSize = true };
@@ -105,10 +105,16 @@ public class OfferDetailForm : Form
 
     private void AddGroup()
     {
-        var name = _groupCombo.Text.Trim();
-        if (string.IsNullOrWhiteSpace(name)) return;
+        if (_groupCombo.SelectedItem is not string name || string.IsNullOrWhiteSpace(name)) return;
 
-        _offer.InstallationGroups.Add(new InstallationGroup { Name = name });
+        var exists = _offer.InstallationGroups.Any(g => string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (exists)
+        {
+            MessageBox.Show("Aynı tesisat grubu bu teklifte zaten mevcut.");
+            return;
+        }
+
+        _offer.InstallationGroups.Add(new InstallationGroup { Name = name.Trim() });
         _offer.LastUpdated = DateTime.Now;
         _store.MarkDirty();
         RefreshData();
@@ -118,6 +124,10 @@ public class OfferDetailForm : Form
     {
         _groupCombo.Items.Clear();
         _groupCombo.Items.AddRange(_store.State.Settings.InstallationGroupTemplates.Cast<object>().ToArray());
+        if (_groupCombo.Items.Count > 0 && _groupCombo.SelectedIndex < 0)
+        {
+            _groupCombo.SelectedIndex = 0;
+        }
 
         if (!ReferenceEquals(_groupBindingSource.DataSource, _offer.InstallationGroups))
         {

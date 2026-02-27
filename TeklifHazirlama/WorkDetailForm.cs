@@ -8,7 +8,7 @@ public class WorkDetailForm : Form
     private readonly DataStore _store;
     private readonly Offer _offer;
     private readonly InstallationGroup _group;
-    private readonly ComboBox _detailCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDown };
+    private readonly ComboBox _detailCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly DataGridView _detailsGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
     private readonly BindingSource _detailsBindingSource = new();
     private readonly Label _materialTotalLabel = new() { AutoSize = true };
@@ -97,10 +97,16 @@ public class WorkDetailForm : Form
 
     private void AddDetail()
     {
-        var name = _detailCombo.Text.Trim();
-        if (string.IsNullOrWhiteSpace(name)) return;
+        if (_detailCombo.SelectedItem is not string name || string.IsNullOrWhiteSpace(name)) return;
 
-        _group.WorkDetails.Add(new WorkDetail { Name = name });
+        var exists = _group.WorkDetails.Any(d => string.Equals(d.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (exists)
+        {
+            MessageBox.Show("Aynı isimde iş detayı bu listede zaten mevcut.");
+            return;
+        }
+
+        _group.WorkDetails.Add(new WorkDetail { Name = name.Trim() });
         _offer.LastUpdated = DateTime.Now;
         _store.MarkDirty();
         RefreshData();
@@ -112,6 +118,11 @@ public class WorkDetailForm : Form
         if (_store.State.Settings.WorkDetailTemplatesByGroup.TryGetValue(_group.Name, out var details))
         {
             _detailCombo.Items.AddRange(details.Cast<object>().ToArray());
+        }
+
+        if (_detailCombo.Items.Count > 0 && _detailCombo.SelectedIndex < 0)
+        {
+            _detailCombo.SelectedIndex = 0;
         }
 
         if (!ReferenceEquals(_detailsBindingSource.DataSource, _group.WorkDetails))
