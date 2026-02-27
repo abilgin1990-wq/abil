@@ -112,7 +112,7 @@ public class MainForm : Form
             }
             else if (clickedColumn == DeleteColumnName)
             {
-                var confirm = MessageBox.Show("Bu teklifi silmek istediğinize emin misiniz?", "Teklif Sil", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var confirm = MessageBox.Show($"Firma: {offer.CompanyName}\nProje: {offer.ProjectName}\n\nBu teklifi silmek istediğinize emin misiniz?", "Teklif Sil", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (confirm != DialogResult.Yes) return;
 
                 _store.State.Offers.Remove(offer);
