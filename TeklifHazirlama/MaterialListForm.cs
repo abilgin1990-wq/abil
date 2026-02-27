@@ -117,7 +117,12 @@ public class MaterialListForm : Form
             }
         };
 
-        _materialText.TextChanged += (_, _) => ConfigureBrandAutoComplete();
+        _materialText.TextChanged += (_, _) =>
+        {
+            ConfigureMaterialAutoComplete();
+            ConfigureBrandAutoComplete();
+        };
+        _brandText.TextChanged += (_, _) => ConfigureBrandAutoComplete();
 
         _materialsGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _materialsGrid.EnableHeadersVisualStyles = false;
@@ -132,9 +137,18 @@ public class MaterialListForm : Form
         _brandText.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
         _brandText.AutoCompleteSource = AutoCompleteSource.CustomSource;
 
+        ConfigureMaterialAutoComplete();
+        ConfigureBrandAutoComplete();
+    }
+
+    private void ConfigureMaterialAutoComplete()
+    {
+        var materialFilter = _materialText.Text.Trim();
+
         var materials = _store.State.Settings.MaterialCatalog
             .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name)
             .Select(m => m.MaterialName)
+            .Where(name => string.IsNullOrWhiteSpace(materialFilter) || name.Contains(materialFilter, StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x)
             .ToList();
@@ -142,24 +156,18 @@ public class MaterialListForm : Form
         var materialSource = new AutoCompleteStringCollection();
         materialSource.AddRange(materials.ToArray());
         _materialText.AutoCompleteCustomSource = materialSource;
-
-        ConfigureBrandAutoComplete();
     }
 
     private void ConfigureBrandAutoComplete()
     {
-        var materialName = _materialText.Text.Trim();
+        var materialFilter = _materialText.Text.Trim();
+        var brandFilter = _brandText.Text.Trim();
 
-        var brandsQuery = _store.State.Settings.MaterialCatalog
-            .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name);
-
-        if (!string.IsNullOrWhiteSpace(materialName))
-        {
-            brandsQuery = brandsQuery.Where(m => string.Equals(m.MaterialName, materialName, StringComparison.OrdinalIgnoreCase));
-        }
-
-        var brands = brandsQuery
+        var brands = _store.State.Settings.MaterialCatalog
+            .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name)
+            .Where(m => string.IsNullOrWhiteSpace(materialFilter) || m.MaterialName.Contains(materialFilter, StringComparison.OrdinalIgnoreCase))
             .Select(m => m.Brand)
+            .Where(brand => string.IsNullOrWhiteSpace(brandFilter) || brand.Contains(brandFilter, StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x)
             .ToList();
