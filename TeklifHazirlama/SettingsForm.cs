@@ -2,6 +2,9 @@ namespace TeklifHazirlama;
 
 public class SettingsForm : Form
 {
+    private const string EditMaterialColumnName = "EditMaterialColumn";
+    private const string DeleteMaterialColumnName = "DeleteMaterialColumn";
+
     private readonly DataStore _store;
 
     private readonly TextBox _newGroupText = new() { Width = 180 };
@@ -135,14 +138,15 @@ public class SettingsForm : Form
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "PB", DataPropertyName = nameof(MaterialCatalogItem.Currency), Width = 60 });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İskonto", DataPropertyName = nameof(MaterialCatalogItem.DiscountPercent), Width = 70 });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İşçilik", DataPropertyName = nameof(MaterialCatalogItem.LaborUnitPrice), Width = 90 });
-        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 80 });
-        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Sil", Text = "Sil", UseColumnTextForButtonValue = true, Width = 80 });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EditMaterialColumnName, HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 80 });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteMaterialColumnName, HeaderText = "Sil", Text = "Sil", UseColumnTextForButtonValue = true, Width = 80 });
 
         _materialsGrid.CellContentClick += (_, e) =>
         {
-            if (e.RowIndex < 0) return;
-            var item = (MaterialCatalogItem)_materialsGrid.Rows[e.RowIndex].DataBoundItem;
-            if (e.ColumnIndex == 8)
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (_materialsGrid.Rows[e.RowIndex].DataBoundItem is not MaterialCatalogItem item) return;
+            var clickedColumn = _materialsGrid.Columns[e.ColumnIndex].Name;
+            if (clickedColumn == EditMaterialColumnName)
             {
                 _matGroupCombo.SelectedItem = item.InstallationGroupName;
                 RefreshMaterialDetailCombo();
@@ -155,7 +159,7 @@ public class SettingsForm : Form
                 _currencyCombo.SelectedItem = item.Currency;
                 _store.State.Settings.MaterialCatalog.Remove(item);
             }
-            else if (e.ColumnIndex == 9)
+            else if (clickedColumn == DeleteMaterialColumnName)
             {
                 _store.State.Settings.MaterialCatalog.Remove(item);
             }
@@ -224,8 +228,9 @@ public class SettingsForm : Form
             if (!string.IsNullOrWhiteSpace(newName))
             {
                 var list = _store.State.Settings.WorkDetailTemplatesByGroup[group];
-                var index = list.IndexOf(selectedDetail);
-                if (index >= 0) list[index] = newName;
+                _store.State.Settings.WorkDetailTemplatesByGroup[group] = list
+                    .Select(item => item == selectedDetail ? newName : item)
+                    .ToList();
             }
         }
         else if (_groupsList.SelectedItem is string selectedGroup)
@@ -237,8 +242,9 @@ public class SettingsForm : Form
                 _store.State.Settings.WorkDetailTemplatesByGroup.Remove(selectedGroup);
                 _store.State.Settings.WorkDetailTemplatesByGroup[newName] = details;
 
-                var idx = _store.State.Settings.InstallationGroupTemplates.IndexOf(selectedGroup);
-                _store.State.Settings.InstallationGroupTemplates[idx] = newName;
+                _store.State.Settings.InstallationGroupTemplates = _store.State.Settings.InstallationGroupTemplates
+                    .Select(item => item == selectedGroup ? newName : item)
+                    .ToList();
             }
         }
 

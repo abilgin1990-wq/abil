@@ -2,6 +2,9 @@ namespace TeklifHazirlama;
 
 public class WorkDetailForm : Form
 {
+    private const string EnterColumnName = "EnterDetailColumn";
+    private const string DeleteColumnName = "DeleteDetailColumn";
+
     private readonly DataStore _store;
     private readonly Offer _offer;
     private readonly InstallationGroup _group;
@@ -63,15 +66,16 @@ public class WorkDetailForm : Form
     {
         _detailsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İş Detayı", DataPropertyName = nameof(WorkDetail.Name), Width = 280 });
         _detailsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tutar", DataPropertyName = nameof(WorkDetail.GrandTotal), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
-        _detailsGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Gir", Text = "İş Detayına Gir", UseColumnTextForButtonValue = true, Width = 130 });
-        _detailsGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Sil", Text = "İş Detayını Sil", UseColumnTextForButtonValue = true, Width = 130 });
+        _detailsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EnterColumnName, HeaderText = "Gir", Text = "İş Detayına Gir", UseColumnTextForButtonValue = true, Width = 130 });
+        _detailsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "İş Detayını Sil", UseColumnTextForButtonValue = true, Width = 130 });
 
         _detailsGrid.CellContentClick += (_, e) =>
         {
-            if (e.RowIndex < 0) return;
-            var detail = (WorkDetail)_detailsGrid.Rows[e.RowIndex].DataBoundItem;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (_detailsGrid.Rows[e.RowIndex].DataBoundItem is not WorkDetail detail) return;
+            var clickedColumn = _detailsGrid.Columns[e.ColumnIndex].Name;
 
-            if (e.ColumnIndex == 2)
+            if (clickedColumn == EnterColumnName)
             {
                 using var form = new MaterialListForm(_store, _offer, _group, detail);
                 form.ShowDialog();
@@ -79,7 +83,7 @@ public class WorkDetailForm : Form
                 _store.MarkDirty();
                 RefreshData();
             }
-            else if (e.ColumnIndex == 3)
+            else if (clickedColumn == DeleteColumnName)
             {
                 _group.WorkDetails.RemoveAll(d => d.Id == detail.Id);
                 _store.MarkDirty();

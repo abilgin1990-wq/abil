@@ -2,6 +2,8 @@ namespace TeklifHazirlama;
 
 public class MaterialListForm : Form
 {
+    private const string DeleteMaterialColumnName = "DeleteMaterialColumn";
+
     private readonly DataStore _store;
     private readonly Offer _offer;
     private readonly InstallationGroup _group;
@@ -83,12 +85,13 @@ public class MaterialListForm : Form
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Malzeme Toplam", DataPropertyName = nameof(MaterialSelection.MaterialTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "İşçilik Toplam", DataPropertyName = nameof(MaterialSelection.LaborTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Genel Toplam", DataPropertyName = nameof(MaterialSelection.GrandTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
-        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Sil", Text = "Malzemeyi Sil", UseColumnTextForButtonValue = true, Width = 110 });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteMaterialColumnName, HeaderText = "Sil", Text = "Malzemeyi Sil", UseColumnTextForButtonValue = true, Width = 110 });
 
         _materialsGrid.CellContentClick += (_, e) =>
         {
-            if (e.RowIndex < 0 || e.ColumnIndex != 10) return;
-            var material = (MaterialSelection)_materialsGrid.Rows[e.RowIndex].DataBoundItem;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (_materialsGrid.Columns[e.ColumnIndex].Name != DeleteMaterialColumnName) return;
+            if (_materialsGrid.Rows[e.RowIndex].DataBoundItem is not MaterialSelection material) return;
             _detail.Materials.Remove(material);
             _offer.LastUpdated = DateTime.Now;
             _store.MarkDirty();

@@ -2,6 +2,9 @@ namespace TeklifHazirlama;
 
 public class OfferDetailForm : Form
 {
+    private const string OpenColumnName = "OpenGroupColumn";
+    private const string DeleteColumnName = "DeleteGroupColumn";
+
     private readonly DataStore _store;
     private readonly Offer _offer;
     private readonly ComboBox _groupCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDown };
@@ -71,15 +74,16 @@ public class OfferDetailForm : Form
     {
         _groupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tesisat Grubu", DataPropertyName = nameof(InstallationGroup.Name), Width = 250 });
         _groupGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tutar", DataPropertyName = nameof(InstallationGroup.TotalAmount), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
-        _groupGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Aç", Text = "Tesisat Grubunu Aç", UseColumnTextForButtonValue = true, Width = 150 });
-        _groupGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Sil", Text = "Tesisat Grubunu Sil", UseColumnTextForButtonValue = true, Width = 150 });
+        _groupGrid.Columns.Add(new DataGridViewButtonColumn { Name = OpenColumnName, HeaderText = "Aç", Text = "Tesisat Grubunu Aç", UseColumnTextForButtonValue = true, Width = 150 });
+        _groupGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "Tesisat Grubunu Sil", UseColumnTextForButtonValue = true, Width = 150 });
 
         _groupGrid.CellContentClick += (_, e) =>
         {
-            if (e.RowIndex < 0) return;
-            var group = (InstallationGroup)_groupGrid.Rows[e.RowIndex].DataBoundItem;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (_groupGrid.Rows[e.RowIndex].DataBoundItem is not InstallationGroup group) return;
+            var clickedColumn = _groupGrid.Columns[e.ColumnIndex].Name;
 
-            if (e.ColumnIndex == 2)
+            if (clickedColumn == OpenColumnName)
             {
                 using var form = new WorkDetailForm(_store, _offer, group);
                 form.ShowDialog();
@@ -87,7 +91,7 @@ public class OfferDetailForm : Form
                 _store.MarkDirty();
                 RefreshData();
             }
-            else if (e.ColumnIndex == 3)
+            else if (clickedColumn == DeleteColumnName)
             {
                 _offer.InstallationGroups.RemoveAll(g => g.Id == group.Id);
                 _store.MarkDirty();

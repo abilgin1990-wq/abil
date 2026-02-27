@@ -2,6 +2,9 @@ namespace TeklifHazirlama;
 
 public class MainForm : Form
 {
+    private const string DetailColumnName = "DetailColumn";
+    private const string DeleteColumnName = "DeleteColumn";
+
     private readonly DataStore _store = new();
     private readonly TextBox _companyText = new() { Width = 220 };
     private readonly TextBox _projectText = new() { Width = 220 };
@@ -79,15 +82,19 @@ public class MainForm : Form
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Proje", DataPropertyName = nameof(Offer.ProjectName), Width = 200 });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Toplam Tutar", DataPropertyName = nameof(Offer.TotalAmount), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Son Güncelleme", DataPropertyName = nameof(Offer.LastUpdated), Width = 170, DefaultCellStyle = new DataGridViewCellStyle { Format = "g" } });
-        _offersGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Detay", Text = "Teklif Detayını Gör", UseColumnTextForButtonValue = true, Width = 140 });
-        _offersGrid.Columns.Add(new DataGridViewButtonColumn { HeaderText = "Sil", Text = "Teklifi Sil", UseColumnTextForButtonValue = true, Width = 120 });
+        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DetailColumnName, HeaderText = "Detay", Text = "Teklif Detayını Gör", UseColumnTextForButtonValue = true, Width = 140 });
+        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "Teklifi Sil", UseColumnTextForButtonValue = true, Width = 120 });
 
         _offersGrid.CellContentClick += (_, e) =>
         {
-            if (e.RowIndex < 0) return;
-            var offer = (Offer)_offersGrid.Rows[e.RowIndex].DataBoundItem;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (_offersGrid.Rows[e.RowIndex].DataBoundItem is not Offer offer)
+            {
+                return;
+            }
 
-            if (e.ColumnIndex == 4)
+            var clickedColumn = _offersGrid.Columns[e.ColumnIndex].Name;
+            if (clickedColumn == DetailColumnName)
             {
                 using var detailForm = new OfferDetailForm(_store, offer);
                 detailForm.ShowDialog();
@@ -95,7 +102,7 @@ public class MainForm : Form
                 _store.MarkDirty();
                 RefreshOfferGrid();
             }
-            else if (e.ColumnIndex == 5)
+            else if (clickedColumn == DeleteColumnName)
             {
                 _store.State.Offers.RemoveAll(o => o.Id == offer.Id);
                 _store.MarkDirty();
