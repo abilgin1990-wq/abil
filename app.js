@@ -907,7 +907,7 @@ function showCatalogView() {
         <label>İş Detayı Grubu
           <input name="detailName" required placeholder="Örn. Vitrifiye" />
         </label>
-        <label><button class="primary" type="submit">İş Detayı Grubu Ekle</button></label>
+        <label style="align-self:end;"><button class="primary" type="submit">İş Detayı Grubu Ekle</button></label>
       </form>
     </div>
 
