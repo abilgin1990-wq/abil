@@ -9,8 +9,8 @@ public class MaterialListForm : Form
     private readonly InstallationGroup _group;
     private readonly WorkDetail _detail;
 
-    private readonly ComboBox _materialCombo = new() { Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _brandCombo = new() { Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly TextBox _materialText = new() { Width = 180 };
+    private readonly TextBox _brandText = new() { Width = 140 };
     private readonly TextBox _quantityText = new() { Width = 80, Text = "1" };
     private readonly DataGridView _materialsGrid = new() { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, ReadOnly = true };
     private readonly BindingSource _materialsBindingSource = new();
@@ -31,7 +31,7 @@ public class MaterialListForm : Form
 
         Controls.Add(BuildLayout());
         ConfigureGrid();
-        BindMaterialCombos();
+        ConfigureAutoComplete();
         RefreshData();
 
         ButtonStyler.Apply(this);
@@ -66,8 +66,8 @@ public class MaterialListForm : Form
         addButton.Click += (_, _) => AddMaterial();
 
         addPanel.Controls.AddRange([
-            new Label { Text = "Malzeme", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _materialCombo,
-            new Label { Text = "Marka", AutoSize = true, Padding = new Padding(8, 8, 0, 0) }, _brandCombo,
+            new Label { Text = "Malzeme", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, _materialText,
+            new Label { Text = "Marka", AutoSize = true, Padding = new Padding(8, 8, 0, 0) }, _brandText,
             new Label { Text = "Adet", AutoSize = true, Padding = new Padding(8, 8, 0, 0) }, _quantityText,
             addButton
         ]);
@@ -117,8 +117,7 @@ public class MaterialListForm : Form
             }
         };
 
-        _materialCombo.SelectedIndexChanged += (_, _) => BindBrandCombo();
-
+        _materialText.TextChanged += (_, _) => ConfigureBrandAutoComplete();
 
         _materialsGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _materialsGrid.EnableHeadersVisualStyles = false;
@@ -126,43 +125,57 @@ public class MaterialListForm : Form
         _materialsGrid.DataSource = _materialsBindingSource;
     }
 
-    private void BindMaterialCombos()
+    private void ConfigureAutoComplete()
     {
+        _materialText.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+        _materialText.AutoCompleteSource = AutoCompleteSource.CustomSource;
+        _brandText.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+        _brandText.AutoCompleteSource = AutoCompleteSource.CustomSource;
+
         var materials = _store.State.Settings.MaterialCatalog
             .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name)
             .Select(m => m.MaterialName)
-            .Distinct()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x)
             .ToList();
 
-        _materialCombo.Items.Clear();
-        _materialCombo.Items.AddRange(materials.Cast<object>().ToArray());
-        if (_materialCombo.Items.Count > 0) _materialCombo.SelectedIndex = 0;
+        var materialSource = new AutoCompleteStringCollection();
+        materialSource.AddRange(materials.ToArray());
+        _materialText.AutoCompleteCustomSource = materialSource;
 
-        BindBrandCombo();
+        ConfigureBrandAutoComplete();
     }
 
-    private void BindBrandCombo()
+    private void ConfigureBrandAutoComplete()
     {
-        _brandCombo.Items.Clear();
-        if (_materialCombo.SelectedItem is not string materialName) return;
+        var materialName = _materialText.Text.Trim();
 
-        var brands = _store.State.Settings.MaterialCatalog
-            .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name && m.MaterialName == materialName)
+        var brandsQuery = _store.State.Settings.MaterialCatalog
+            .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name);
+
+        if (!string.IsNullOrWhiteSpace(materialName))
+        {
+            brandsQuery = brandsQuery.Where(m => string.Equals(m.MaterialName, materialName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var brands = brandsQuery
             .Select(m => m.Brand)
-            .Distinct()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x)
             .ToList();
 
-        _brandCombo.Items.AddRange(brands.Cast<object>().ToArray());
-        if (_brandCombo.Items.Count > 0) _brandCombo.SelectedIndex = 0;
+        var brandSource = new AutoCompleteStringCollection();
+        brandSource.AddRange(brands.ToArray());
+        _brandText.AutoCompleteCustomSource = brandSource;
     }
 
     private void AddMaterial()
     {
-        if (_materialCombo.SelectedItem is not string materialName || _brandCombo.SelectedItem is not string brand)
+        var materialName = _materialText.Text.Trim();
+        var brand = _brandText.Text.Trim();
+        if (string.IsNullOrWhiteSpace(materialName) || string.IsNullOrWhiteSpace(brand))
         {
-            MessageBox.Show("Malzeme ve marka seçiniz.");
+            MessageBox.Show("Malzeme ve marka giriniz.");
             return;
         }
 
@@ -185,10 +198,14 @@ public class MaterialListForm : Form
         var item = _store.State.Settings.MaterialCatalog.FirstOrDefault(m =>
             m.InstallationGroupName == _group.Name &&
             m.WorkDetailName == _detail.Name &&
-            m.MaterialName == materialName &&
-            m.Brand == brand);
+            string.Equals(m.MaterialName, materialName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(m.Brand, brand, StringComparison.OrdinalIgnoreCase));
 
-        if (item == null) return;
+        if (item == null)
+        {
+            MessageBox.Show("Girilen malzeme/marka için katalog kaydı bulunamadı.");
+            return;
+        }
 
         var rate = item.Currency switch
         {
