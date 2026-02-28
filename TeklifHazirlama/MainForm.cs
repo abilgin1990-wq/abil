@@ -135,11 +135,11 @@ public class MainForm : Form
 
     private void EditOffer(Offer offer)
     {
-        var newCompanyName = Prompt.Show("Firma Adı", offer.CompanyName);
-        if (string.IsNullOrWhiteSpace(newCompanyName)) return;
+        using var editForm = new OfferEditForm(offer.CompanyName, offer.ProjectName);
+        if (editForm.ShowDialog(this) != DialogResult.OK) return;
 
-        var newProjectName = Prompt.Show("Proje Adı", offer.ProjectName);
-        if (string.IsNullOrWhiteSpace(newProjectName)) return;
+        var newCompanyName = editForm.CompanyName;
+        var newProjectName = editForm.ProjectName;
 
         var isDuplicate = _store.State.Offers.Any(o =>
             o.Id != offer.Id
