@@ -339,6 +339,8 @@ public class MaterialListForm : Form
         target.UnitPrice = edited.OriginalListPrice * (1 - edited.DiscountPercent / 100m) * rate;
         target.IsCatalogOutdated = false;
         target.IsManualOverride = true;
+        var catalogItem = _store.State.Settings.MaterialCatalog.FirstOrDefault(x => x.Id == target.MaterialCatalogItemId);
+        target.CatalogSnapshot = catalogItem == null ? string.Empty : DataStore.BuildCatalogSnapshot(catalogItem);
     }
     private bool TryUpdateMaterialFromCatalog(MaterialSelection material)
     {
@@ -368,6 +370,7 @@ public class MaterialListForm : Form
         target.LaborUnitPrice = item.LaborUnitPrice;
         target.IsCatalogOutdated = false;
         target.IsManualOverride = false;
+        target.CatalogSnapshot = DataStore.BuildCatalogSnapshot(item);
     }
 
     private void AddMaterial()

@@ -97,6 +97,7 @@ public class MaterialSelection
     public decimal LaborUnitPrice { get; set; }
     public bool IsCatalogOutdated { get; set; }
     public bool IsManualOverride { get; set; }
+    public string CatalogSnapshot { get; set; } = string.Empty;
 
     [JsonIgnore]
     public string DisplayMaterialName => IsCatalogOutdated ? $"*{MaterialName}" : MaterialName;

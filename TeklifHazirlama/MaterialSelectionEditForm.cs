@@ -27,7 +27,8 @@ public class MaterialSelectionEditForm : Form
             UnitPrice = source.UnitPrice,
             LaborUnitPrice = source.LaborUnitPrice,
             IsCatalogOutdated = source.IsCatalogOutdated,
-            IsManualOverride = source.IsManualOverride
+            IsManualOverride = source.IsManualOverride,
+            CatalogSnapshot = source.CatalogSnapshot
         };
 
         Text = "Malzeme Düzenle";

@@ -43,15 +43,15 @@ public class DataStore
 
     private bool IsMaterialOutdated(MaterialSelection material)
     {
-        if (material.IsManualOverride)
-        {
-            return false;
-        }
-
         var catalogItem = State.Settings.MaterialCatalog.FirstOrDefault(item => item.Id == material.MaterialCatalogItemId);
         if (catalogItem == null)
         {
             return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(material.CatalogSnapshot))
+        {
+            return !string.Equals(material.CatalogSnapshot, BuildCatalogSnapshot(catalogItem), StringComparison.Ordinal);
         }
 
         return !string.Equals(material.MaterialName, catalogItem.MaterialName, StringComparison.OrdinalIgnoreCase)
@@ -61,6 +61,9 @@ public class DataStore
             || material.DiscountPercent != catalogItem.DiscountPercent
             || material.LaborUnitPrice != catalogItem.LaborUnitPrice;
     }
+
+    public static string BuildCatalogSnapshot(MaterialCatalogItem item)
+        => $"{item.Id}|{item.MaterialName}|{item.Brand}|{item.ListPrice}|{item.Currency}|{item.DiscountPercent}|{item.LaborUnitPrice}";
 
     public void Save()
     {
