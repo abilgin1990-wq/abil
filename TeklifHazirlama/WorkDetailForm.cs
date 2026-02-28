@@ -26,6 +26,7 @@ public class WorkDetailForm : Form
         Height = 620;
 
         Controls.Add(BuildLayout());
+        FileMenuHelper.Attach(this, _store, onSettingsUpdated: RefreshData);
         ConfigureGrid();
         RefreshData();
 

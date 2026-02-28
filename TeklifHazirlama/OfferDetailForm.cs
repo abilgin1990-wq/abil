@@ -24,6 +24,7 @@ public class OfferDetailForm : Form
         Height = 650;
 
         Controls.Add(BuildLayout());
+        FileMenuHelper.Attach(this, _store, onSettingsUpdated: RefreshData);
         ConfigureGrid();
         RefreshData();
 

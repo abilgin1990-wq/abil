@@ -35,6 +35,7 @@ public class MaterialListForm : Form
         Height = 680;
 
         Controls.Add(BuildLayout());
+        FileMenuHelper.Attach(this, _store, onSettingsUpdated: RefreshData);
         ConfigureGrid();
         InitializeFiltering();
         RefreshData();
