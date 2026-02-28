@@ -178,6 +178,8 @@ public class SettingsForm : Form
         formArea.Controls.Add(addArea);
 
         _matGroupCombo.SelectedIndexChanged += (_, _) => RefreshMaterialDetailCombo();
+        _matNameText.TextChanged += (_, _) => RefreshMaterialsGrid();
+        _brandText.TextChanged += (_, _) => RefreshMaterialsGrid();
 
         root.Controls.Add(ratePanel, 0, 0);
         root.Controls.Add(formArea, 0, 1);
@@ -409,8 +411,18 @@ public class SettingsForm : Form
 
     private void RefreshMaterialsGrid()
     {
+        var materialFilter = _matNameText.Text.Trim();
+        var brandFilter = _brandText.Text.Trim();
+
+        var filtered = _store.State.Settings.MaterialCatalog
+            .Where(item => string.IsNullOrWhiteSpace(materialFilter)
+                || item.MaterialName.Contains(materialFilter, StringComparison.OrdinalIgnoreCase))
+            .Where(item => string.IsNullOrWhiteSpace(brandFilter)
+                || item.Brand.Contains(brandFilter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
         _materialsGrid.DataSource = null;
-        _materialsGrid.DataSource = _store.State.Settings.MaterialCatalog.ToList();
+        _materialsGrid.DataSource = filtered;
     }
 }
 
