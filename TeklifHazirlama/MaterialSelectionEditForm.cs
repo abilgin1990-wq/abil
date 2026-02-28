@@ -2,8 +2,12 @@ namespace TeklifHazirlama;
 
 public class MaterialSelectionEditForm : Form
 {
-    private readonly TextBox _materialText = new() { Width = 180 };
-    private readonly TextBox _brandText = new() { Width = 180 };
+    private readonly SettingsData _settings;
+    private readonly string _groupName;
+    private readonly string _detailName;
+
+    private readonly ComboBox _materialCombo = new() { Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly ComboBox _brandCombo = new() { Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly TextBox _quantityText = new() { Width = 120 };
     private readonly TextBox _listPriceText = new() { Width = 120 };
     private readonly ComboBox _currencyCombo = new() { Width = 120, DropDownStyle = ComboBoxStyle.DropDownList };
@@ -12,8 +16,12 @@ public class MaterialSelectionEditForm : Form
 
     public MaterialSelection EditedSelection { get; }
 
-    public MaterialSelectionEditForm(MaterialSelection source)
+    public MaterialSelectionEditForm(SettingsData settings, string groupName, string detailName, MaterialSelection source)
     {
+        _settings = settings;
+        _groupName = groupName;
+        _detailName = detailName;
+
         EditedSelection = new MaterialSelection
         {
             MaterialCatalogItemId = source.MaterialCatalogItemId,
@@ -52,8 +60,8 @@ public class MaterialSelectionEditForm : Form
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         var row = 0;
-        AddRow(root, "Malzeme", _materialText, ref row);
-        AddRow(root, "Marka", _brandText, ref row);
+        AddRow(root, "Malzeme", _materialCombo, ref row);
+        AddRow(root, "Marka", _brandCombo, ref row);
         AddRow(root, "Adet", _quantityText, ref row);
         AddRow(root, "Liste Fiyatı", _listPriceText, ref row);
         AddRow(root, "Para Birimi", _currencyCombo, ref row);
@@ -78,6 +86,14 @@ public class MaterialSelectionEditForm : Form
         root.Controls.Add(new Label { Text = string.Empty, AutoSize = true }, 0, row);
         root.Controls.Add(actions, 1, row);
 
+        _materialCombo.SelectedIndexChanged += (_, _) =>
+        {
+            RefreshBrandCombo();
+            ApplyCatalogDefaults();
+        };
+
+        _brandCombo.SelectedIndexChanged += (_, _) => ApplyCatalogDefaults();
+
         return root;
     }
 
@@ -93,8 +109,20 @@ public class MaterialSelectionEditForm : Form
     {
         _currencyCombo.Items.AddRange(["TRY", "USD", "EUR"]);
 
-        _materialText.Text = EditedSelection.MaterialName;
-        _brandText.Text = EditedSelection.Brand;
+        RefreshMaterialCombo();
+        _materialCombo.SelectedItem = EditedSelection.MaterialName;
+        if (_materialCombo.SelectedItem == null && _materialCombo.Items.Count > 0)
+        {
+            _materialCombo.SelectedIndex = 0;
+        }
+
+        RefreshBrandCombo();
+        _brandCombo.SelectedItem = EditedSelection.Brand;
+        if (_brandCombo.SelectedItem == null && _brandCombo.Items.Count > 0)
+        {
+            _brandCombo.SelectedIndex = 0;
+        }
+
         _quantityText.Text = EditedSelection.Quantity.ToString();
         _listPriceText.Text = EditedSelection.OriginalListPrice.ToString();
         _discountText.Text = EditedSelection.DiscountPercent.ToString();
@@ -107,10 +135,73 @@ public class MaterialSelectionEditForm : Form
         }
     }
 
+    private void RefreshMaterialCombo()
+    {
+        _materialCombo.Items.Clear();
+
+        var materials = _settings.MaterialCatalog
+            .Where(item => string.Equals(item.InstallationGroupName, _groupName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.WorkDetailName, _detailName, StringComparison.OrdinalIgnoreCase))
+            .Select(item => item.MaterialName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .Cast<object>()
+            .ToArray();
+
+        _materialCombo.Items.AddRange(materials);
+
+        if (_materialCombo.Items.Count == 0 || !_materialCombo.Items.Contains(EditedSelection.MaterialName))
+        {
+            _materialCombo.Items.Add(EditedSelection.MaterialName);
+        }
+    }
+
+    private void RefreshBrandCombo()
+    {
+        _brandCombo.Items.Clear();
+
+        var selectedMaterial = _materialCombo.SelectedItem?.ToString() ?? string.Empty;
+        var brands = _settings.MaterialCatalog
+            .Where(item => string.Equals(item.InstallationGroupName, _groupName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.WorkDetailName, _detailName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.MaterialName, selectedMaterial, StringComparison.OrdinalIgnoreCase))
+            .Select(item => item.Brand)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .Cast<object>()
+            .ToArray();
+
+        _brandCombo.Items.AddRange(brands);
+
+        if (_brandCombo.Items.Count == 0 || !_brandCombo.Items.Contains(EditedSelection.Brand))
+        {
+            _brandCombo.Items.Add(EditedSelection.Brand);
+        }
+    }
+
+    private void ApplyCatalogDefaults()
+    {
+        var selectedMaterial = _materialCombo.SelectedItem?.ToString() ?? string.Empty;
+        var selectedBrand = _brandCombo.SelectedItem?.ToString() ?? string.Empty;
+
+        var item = _settings.MaterialCatalog.FirstOrDefault(x =>
+            string.Equals(x.InstallationGroupName, _groupName, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.WorkDetailName, _detailName, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.MaterialName, selectedMaterial, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.Brand, selectedBrand, StringComparison.OrdinalIgnoreCase));
+
+        if (item == null) return;
+
+        _listPriceText.Text = item.ListPrice.ToString();
+        _currencyCombo.SelectedItem = item.Currency;
+        _discountText.Text = item.DiscountPercent.ToString();
+        _laborText.Text = item.LaborUnitPrice.ToString();
+    }
+
     private void SaveAndClose()
     {
-        var materialName = _materialText.Text.Trim();
-        var brand = _brandText.Text.Trim();
+        var materialName = _materialCombo.SelectedItem?.ToString()?.Trim() ?? string.Empty;
+        var brand = _brandCombo.SelectedItem?.ToString()?.Trim() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(materialName) || string.IsNullOrWhiteSpace(brand))
         {

@@ -153,7 +153,7 @@ public class MaterialListForm : Form
             }
             else if (clickedColumn == EditMaterialColumnName)
             {
-                using var editForm = new MaterialSelectionEditForm(material);
+                using var editForm = new MaterialSelectionEditForm(_store.State.Settings, _group.Name, _detail.Name, material);
                 if (editForm.ShowDialog() != DialogResult.OK) return;
 
                 ApplyEditedMaterial(material, editForm.EditedSelection);
