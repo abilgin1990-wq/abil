@@ -65,22 +65,30 @@ public class MainForm : Form
         var menu = new MenuStrip();
         var file = new ToolStripMenuItem("Dosya");
         var settings = new ToolStripMenuItem("Ayarlar");
+        var exportExcel = new ToolStripMenuItem("Excele Aktar");
         var load = new ToolStripMenuItem("Yükle");
         var save = new ToolStripMenuItem("Kaydet");
         var saveAs = new ToolStripMenuItem("Farklı Kaydet");
         var close = new ToolStripMenuItem("Kapat");
 
         settings.Click += (_, _) => OpenSettings();
+        exportExcel.Click += (_, _) => OpenExcelExport();
         load.Click += (_, _) => LoadFromFile();
         save.Click += (_, _) => Save();
         saveAs.Click += (_, _) => SaveAs();
         close.Click += (_, _) => Close();
 
-        file.DropDownItems.AddRange([settings, load, save, saveAs, close]);
+        file.DropDownItems.AddRange([settings, exportExcel, load, save, saveAs, close]);
         menu.Items.Add(file);
 
         MainMenuStrip = menu;
         Controls.Add(menu);
+    }
+
+    private void OpenExcelExport()
+    {
+        using var exportForm = new ExcelExportForm(_store);
+        exportForm.ShowDialog(this);
     }
 
     private void ConfigureOfferGrid()

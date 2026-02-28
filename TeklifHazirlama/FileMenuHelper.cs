@@ -7,6 +7,7 @@ public static class FileMenuHelper
         var menu = new MenuStrip();
         var file = new ToolStripMenuItem("Dosya");
         var settings = new ToolStripMenuItem("Ayarlar");
+        var exportExcel = new ToolStripMenuItem("Excele Aktar");
         var load = new ToolStripMenuItem("Yükle") { Enabled = allowLoad };
         var save = new ToolStripMenuItem("Kaydet");
         var saveAs = new ToolStripMenuItem("Farklı Kaydet");
@@ -17,6 +18,12 @@ public static class FileMenuHelper
             using var settingsForm = new SettingsForm(store);
             settingsForm.ShowDialog(form);
             onSettingsUpdated?.Invoke();
+        };
+
+        exportExcel.Click += (_, _) =>
+        {
+            using var exportForm = new ExcelExportForm(store);
+            exportForm.ShowDialog(form);
         };
 
         load.Click += (_, _) =>
@@ -56,7 +63,7 @@ public static class FileMenuHelper
         saveAs.Click += (_, _) => SaveAs(form, store);
         close.Click += (_, _) => form.Close();
 
-        file.DropDownItems.AddRange([settings, load, save, saveAs, close]);
+        file.DropDownItems.AddRange([settings, exportExcel, load, save, saveAs, close]);
         menu.Items.Add(file);
         menu.Dock = DockStyle.Top;
 
