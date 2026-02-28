@@ -19,6 +19,9 @@ public class SettingsForm : Form
     private readonly ComboBox _matDetailCombo = new() { Width = 130, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly TextBox _matNameText = new() { Width = 120 };
     private readonly TextBox _brandText = new() { Width = 120 };
+    private readonly ListBox _materialSuggestions = new() { Width = 120, Height = 110, Visible = false, IntegralHeight = false };
+    private readonly ListBox _brandSuggestions = new() { Width = 120, Height = 110, Visible = false, IntegralHeight = false };
+    private bool _suppressSuggestionUpdate;
     private readonly TextBox _priceText = new() { Width = 90 };
     private readonly ComboBox _currencyCombo = new() { Width = 90, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly TextBox _discountText = new() { Width = 60, Text = "0" };
@@ -177,9 +180,54 @@ public class SettingsForm : Form
         var formArea = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         formArea.Controls.Add(addArea);
 
+        var suggestionPanel = new TableLayoutPanel { AutoSize = true, ColumnCount = 4, RowCount = 1 };
+        suggestionPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        suggestionPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        suggestionPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        suggestionPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        suggestionPanel.Controls.Add(_materialSuggestions, 0, 0);
+        suggestionPanel.Controls.Add(_brandSuggestions, 1, 0);
+        formArea.Controls.Add(suggestionPanel);
+
         _matGroupCombo.SelectedIndexChanged += (_, _) => RefreshMaterialDetailCombo();
-        _matNameText.TextChanged += (_, _) => RefreshMaterialsGrid();
-        _brandText.TextChanged += (_, _) => RefreshMaterialsGrid();
+        _matNameText.TextChanged += (_, _) =>
+        {
+            if (_suppressSuggestionUpdate) return;
+            RefreshMaterialsGrid();
+            UpdateMaterialSuggestions();
+            UpdateBrandSuggestions();
+        };
+        _brandText.TextChanged += (_, _) =>
+        {
+            if (_suppressSuggestionUpdate) return;
+            RefreshMaterialsGrid();
+            UpdateBrandSuggestions();
+        };
+
+        _matNameText.KeyDown += (_, e) => HandleSuggestionKeyDown(e, _materialSuggestions, _matNameText, selected =>
+        {
+            _matNameText.Text = selected;
+            UpdateBrandSuggestions();
+        });
+        _brandText.KeyDown += (_, e) => HandleSuggestionKeyDown(e, _brandSuggestions, _brandText, selected => _brandText.Text = selected);
+
+        _materialSuggestions.Click += (_, _) => ApplySuggestion(_materialSuggestions, _matNameText, selected =>
+        {
+            _matNameText.Text = selected;
+            UpdateBrandSuggestions();
+        });
+        _materialSuggestions.DoubleClick += (_, _) => ApplySuggestion(_materialSuggestions, _matNameText, selected =>
+        {
+            _matNameText.Text = selected;
+            UpdateBrandSuggestions();
+        });
+        _brandSuggestions.Click += (_, _) => ApplySuggestion(_brandSuggestions, _brandText, selected => _brandText.Text = selected);
+        _brandSuggestions.DoubleClick += (_, _) => ApplySuggestion(_brandSuggestions, _brandText, selected => _brandText.Text = selected);
+
+        _matNameText.Leave += (_, _) => BeginInvoke(new Action(() => { if (!_materialSuggestions.Focused) _materialSuggestions.Visible = false; }));
+        _brandText.Leave += (_, _) => BeginInvoke(new Action(() => { if (!_brandSuggestions.Focused) _brandSuggestions.Visible = false; }));
+        _materialSuggestions.Leave += (_, _) => _materialSuggestions.Visible = false;
+        _brandSuggestions.Leave += (_, _) => _brandSuggestions.Visible = false;
 
         root.Controls.Add(ratePanel, 0, 0);
         root.Controls.Add(formArea, 0, 1);
@@ -406,6 +454,87 @@ public class SettingsForm : Form
         {
             _matDetailCombo.Items.AddRange(details.Cast<object>().ToArray());
             if (_matDetailCombo.Items.Count > 0) _matDetailCombo.SelectedIndex = 0;
+        }
+    }
+
+    private void UpdateMaterialSuggestions()
+    {
+        var materialFilter = _matNameText.Text.Trim();
+        var suggestions = _store.State.Settings.MaterialCatalog
+            .Select(x => x.MaterialName)
+            .Where(x => string.IsNullOrWhiteSpace(materialFilter) || x.Contains(materialFilter, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+
+        BindSuggestions(_materialSuggestions, suggestions, _matNameText.Focused && !string.IsNullOrWhiteSpace(materialFilter));
+    }
+
+    private void UpdateBrandSuggestions()
+    {
+        var materialFilter = _matNameText.Text.Trim();
+        var brandFilter = _brandText.Text.Trim();
+
+        var suggestions = _store.State.Settings.MaterialCatalog
+            .Where(x => string.IsNullOrWhiteSpace(materialFilter) || x.MaterialName.Contains(materialFilter, StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.Brand)
+            .Where(x => string.IsNullOrWhiteSpace(brandFilter) || x.Contains(brandFilter, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+
+        BindSuggestions(_brandSuggestions, suggestions, _brandText.Focused && !string.IsNullOrWhiteSpace(brandFilter));
+    }
+
+    private static void BindSuggestions(ListBox listBox, List<string> items, bool show)
+    {
+        listBox.BeginUpdate();
+        listBox.Items.Clear();
+        foreach (var item in items)
+        {
+            listBox.Items.Add(item);
+        }
+        listBox.EndUpdate();
+        listBox.Visible = show && listBox.Items.Count > 0;
+    }
+
+    private void HandleSuggestionKeyDown(KeyEventArgs e, ListBox listBox, TextBox targetTextBox, Action<string> apply)
+    {
+        if (!listBox.Visible || listBox.Items.Count == 0) return;
+
+        if (e.KeyCode == Keys.Down)
+        {
+            listBox.Focus();
+            listBox.SelectedIndex = 0;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.KeyCode == Keys.Enter)
+        {
+            ApplySuggestion(listBox, targetTextBox, apply);
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+        }
+    }
+
+    private void ApplySuggestion(ListBox listBox, TextBox targetTextBox, Action<string> apply)
+    {
+        if (listBox.SelectedItem is not string selected) return;
+
+        _suppressSuggestionUpdate = true;
+        try
+        {
+            apply(selected);
+            targetTextBox.SelectionStart = targetTextBox.TextLength;
+            targetTextBox.SelectionLength = 0;
+            listBox.Visible = false;
+            targetTextBox.Focus();
+            RefreshMaterialsGrid();
+        }
+        finally
+        {
+            _suppressSuggestionUpdate = false;
         }
     }
 
