@@ -33,7 +33,6 @@ public class SettingsForm : Form
         Height = 620;
 
         Controls.Add(BuildTabs());
-        FileMenuHelper.Attach(this, _store, onSettingsUpdated: RefreshAll);
         ConfigureMaterialsGrid();
         RefreshAll();
 
