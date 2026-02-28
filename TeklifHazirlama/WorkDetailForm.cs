@@ -131,10 +131,42 @@ public class WorkDetailForm : Form
             return;
         }
 
-        _group.WorkDetails.Add(new WorkDetail { Name = name.Trim() });
+        var detail = new WorkDetail { Name = name.Trim() };
+        SeedMaterialsFromCatalog(detail);
+        _group.WorkDetails.Add(detail);
         _offer.LastUpdated = DateTime.Now;
         _store.MarkDirty();
         RefreshData();
+    }
+
+    private void SeedMaterialsFromCatalog(WorkDetail detail)
+    {
+        var seedItems = _store.State.Settings.MaterialCatalog
+            .Where(item => string.Equals(item.InstallationGroupName, _group.Name, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.WorkDetailName, detail.Name, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(item => item.MaterialName, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+
+        foreach (var item in seedItems)
+        {
+            detail.Materials.Add(new MaterialSelection
+            {
+                MaterialCatalogItemId = item.Id,
+                MaterialName = item.MaterialName,
+                Brand = string.Empty,
+                Quantity = 0,
+                ListPrice = 0,
+                OriginalListPrice = 0,
+                Currency = item.Currency,
+                DiscountPercent = item.DiscountPercent,
+                UnitPrice = 0,
+                LaborUnitPrice = item.LaborUnitPrice,
+                IsCatalogOutdated = false,
+                IsManualOverride = true,
+                CatalogSnapshot = DataStore.BuildCatalogSnapshot(item)
+            });
+        }
     }
 
     private void RefreshData()
