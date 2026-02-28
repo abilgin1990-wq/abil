@@ -193,6 +193,32 @@ public class MaterialListForm : Form
 
         _brandText.KeyDown += (_, e) => HandleSuggestionKeyDown(e, _brandSuggestions, _brandText, selected => _brandText.Text = selected);
 
+        _materialText.Enter += (_, _) =>
+        {
+            if (_suppressSuggestionUpdate) return;
+            UpdateMaterialSuggestions();
+            _materialSuggestions.Visible = _materialSuggestions.Items.Count > 0;
+        };
+        _brandText.Enter += (_, _) =>
+        {
+            if (_suppressSuggestionUpdate) return;
+            UpdateBrandSuggestions();
+            _brandSuggestions.Visible = _brandSuggestions.Items.Count > 0;
+        };
+
+        _materialText.Click += (_, _) =>
+        {
+            if (_suppressSuggestionUpdate) return;
+            UpdateMaterialSuggestions();
+            _materialSuggestions.Visible = _materialSuggestions.Items.Count > 0;
+        };
+        _brandText.Click += (_, _) =>
+        {
+            if (_suppressSuggestionUpdate) return;
+            UpdateBrandSuggestions();
+            _brandSuggestions.Visible = _brandSuggestions.Items.Count > 0;
+        };
+
         _materialSuggestions.DoubleClick += (_, _) => ApplySuggestion(_materialSuggestions, _materialText, selected =>
         {
             _materialText.Text = selected;
@@ -247,7 +273,7 @@ public class MaterialListForm : Form
             .OrderBy(x => x)
             .ToList();
 
-        BindSuggestions(_materialSuggestions, materials, _materialText.Focused && !string.IsNullOrWhiteSpace(materialFilter));
+        BindSuggestions(_materialSuggestions, materials, _materialText.Focused);
     }
 
     private void UpdateBrandSuggestions()
@@ -264,7 +290,7 @@ public class MaterialListForm : Form
             .OrderBy(x => x)
             .ToList();
 
-        BindSuggestions(_brandSuggestions, brands, _brandText.Focused && !string.IsNullOrWhiteSpace(brandFilter));
+        BindSuggestions(_brandSuggestions, brands, _brandText.Focused);
     }
 
     private static void BindSuggestions(ListBox listBox, List<string> items, bool show)
