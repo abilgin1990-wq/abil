@@ -7,6 +7,7 @@ public class ExcelExportForm : Form
     private readonly ComboBox _offerCombo = new() { Width = 300, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly ComboBox _groupCombo = new() { Width = 300, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly ComboBox _detailCombo = new() { Width = 300, DropDownStyle = ComboBoxStyle.DropDownList };
+    private bool _isRefreshingSelectors;
 
     public ExcelExportForm(DataStore store)
     {
@@ -47,9 +48,21 @@ public class ExcelExportForm : Form
         root.Controls.Add(new Label { Text = string.Empty, AutoSize = true }, 0, 4);
         root.Controls.Add(exportButton, 1, 4);
 
-        _pageCombo.SelectedIndexChanged += (_, _) => RefreshSelectors();
-        _offerCombo.SelectedIndexChanged += (_, _) => RefreshSelectors();
-        _groupCombo.SelectedIndexChanged += (_, _) => RefreshSelectors();
+        _pageCombo.SelectedIndexChanged += (_, _) =>
+        {
+            if (_isRefreshingSelectors) return;
+            RefreshSelectors();
+        };
+        _offerCombo.SelectedIndexChanged += (_, _) =>
+        {
+            if (_isRefreshingSelectors) return;
+            RefreshSelectors();
+        };
+        _groupCombo.SelectedIndexChanged += (_, _) =>
+        {
+            if (_isRefreshingSelectors) return;
+            RefreshSelectors();
+        };
 
         return root;
     }
@@ -81,43 +94,51 @@ public class ExcelExportForm : Form
 
     private void RefreshSelectors()
     {
-        var previousOfferId = (_offerCombo.SelectedItem as ComboItem<Offer>)?.Value.Id;
-        var previousGroupId = (_groupCombo.SelectedItem as ComboItem<InstallationGroup>)?.Value.Id;
-        var previousDetailId = (_detailCombo.SelectedItem as ComboItem<WorkDetail>)?.Value.Id;
-
-        _offerCombo.Items.Clear();
-        foreach (var offer in _store.State.Offers)
+        _isRefreshingSelectors = true;
+        try
         {
-            _offerCombo.Items.Add(new ComboItem<Offer>($"{offer.CompanyName} - {offer.ProjectName}", offer));
-        }
-        SelectOfferById(previousOfferId);
+            var previousOfferId = (_offerCombo.SelectedItem as ComboItem<Offer>)?.Value.Id;
+            var previousGroupId = (_groupCombo.SelectedItem as ComboItem<InstallationGroup>)?.Value.Id;
+            var previousDetailId = (_detailCombo.SelectedItem as ComboItem<WorkDetail>)?.Value.Id;
 
-        _groupCombo.Items.Clear();
-        var selectedOffer = (_offerCombo.SelectedItem as ComboItem<Offer>)?.Value;
-        if (selectedOffer != null)
-        {
-            foreach (var group in selectedOffer.InstallationGroups)
+            _offerCombo.Items.Clear();
+            foreach (var offer in _store.State.Offers)
             {
-                _groupCombo.Items.Add(new ComboItem<InstallationGroup>(group.Name, group));
+                _offerCombo.Items.Add(new ComboItem<Offer>($"{offer.CompanyName} - {offer.ProjectName}", offer));
             }
-        }
-        SelectGroupById(previousGroupId);
+            SelectOfferById(previousOfferId);
 
-        _detailCombo.Items.Clear();
-        var selectedGroup = (_groupCombo.SelectedItem as ComboItem<InstallationGroup>)?.Value;
-        if (selectedGroup != null)
-        {
-            foreach (var detail in selectedGroup.WorkDetails)
+            _groupCombo.Items.Clear();
+            var selectedOffer = (_offerCombo.SelectedItem as ComboItem<Offer>)?.Value;
+            if (selectedOffer != null)
             {
-                _detailCombo.Items.Add(new ComboItem<WorkDetail>(detail.Name, detail));
+                foreach (var group in selectedOffer.InstallationGroups)
+                {
+                    _groupCombo.Items.Add(new ComboItem<InstallationGroup>(group.Name, group));
+                }
             }
-        }
-        SelectDetailById(previousDetailId);
+            SelectGroupById(previousGroupId);
 
-        var pageIndex = _pageCombo.SelectedIndex;
-        _offerCombo.Enabled = pageIndex >= 0;
-        _groupCombo.Enabled = pageIndex is 1 or 2;
-        _detailCombo.Enabled = pageIndex == 2;
+            _detailCombo.Items.Clear();
+            var selectedGroup = (_groupCombo.SelectedItem as ComboItem<InstallationGroup>)?.Value;
+            if (selectedGroup != null)
+            {
+                foreach (var detail in selectedGroup.WorkDetails)
+                {
+                    _detailCombo.Items.Add(new ComboItem<WorkDetail>(detail.Name, detail));
+                }
+            }
+            SelectDetailById(previousDetailId);
+
+            var pageIndex = _pageCombo.SelectedIndex;
+            _offerCombo.Enabled = pageIndex >= 0;
+            _groupCombo.Enabled = pageIndex is 1 or 2;
+            _detailCombo.Enabled = pageIndex == 2;
+        }
+        finally
+        {
+            _isRefreshingSelectors = false;
+        }
     }
 
     private void SelectOfferById(Guid? id)
