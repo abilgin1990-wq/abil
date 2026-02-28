@@ -51,7 +51,7 @@ public class OfferDetailForm : Form
             Padding = new Padding(0, 8, 0, 8)
         };
 
-        var titlePanel = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(3, 10, 3, 3) };
+        var titlePanel = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(3, 30, 3, 3) };
         titlePanel.Controls.Add(backButton);
         titlePanel.Controls.Add(title);
 
