@@ -21,6 +21,10 @@ public class MainForm : Form
         Controls.Add(BuildLayout());
         BuildMenu();
         ConfigureOfferGrid();
+
+        _companyText.TextChanged += (_, _) => RefreshOfferGrid();
+        _projectText.TextChanged += (_, _) => RefreshOfferGrid();
+
         RefreshOfferGrid();
 
         ButtonStyler.Apply(this);
@@ -85,8 +89,8 @@ public class MainForm : Form
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Proje", DataPropertyName = nameof(Offer.ProjectName), Width = 200 });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Toplam Tutar", DataPropertyName = nameof(Offer.TotalWithVat), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Son Güncelleme", DataPropertyName = nameof(Offer.LastUpdated), Width = 170, DefaultCellStyle = new DataGridViewCellStyle { Format = "g" } });
-        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = EditColumnName, HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 120, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
         _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DetailColumnName, HeaderText = "Detay", Text = "Teklif Detayını Gör", UseColumnTextForButtonValue = true, Width = 140, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
+        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = EditColumnName, HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 120, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
         _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "Teklifi Sil", UseColumnTextForButtonValue = true, Width = 120, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
 
         _offersGrid.CellContentClick += (_, e) =>
@@ -197,11 +201,17 @@ public class MainForm : Form
     {
         _store.RefreshCatalogChangeFlags();
 
-        if (!ReferenceEquals(_offersBindingSource.DataSource, _store.State.Offers))
-        {
-            _offersBindingSource.DataSource = _store.State.Offers;
-        }
+        var companyFilter = _companyText.Text.Trim();
+        var projectFilter = _projectText.Text.Trim();
 
+        var filtered = _store.State.Offers
+            .Where(o => string.IsNullOrWhiteSpace(companyFilter)
+                || o.CompanyName.Contains(companyFilter, StringComparison.OrdinalIgnoreCase))
+            .Where(o => string.IsNullOrWhiteSpace(projectFilter)
+                || o.ProjectName.Contains(projectFilter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        _offersBindingSource.DataSource = filtered;
         _offersBindingSource.ResetBindings(false);
     }
 
