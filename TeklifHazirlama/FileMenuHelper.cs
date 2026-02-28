@@ -58,16 +58,13 @@ public static class FileMenuHelper
 
         file.DropDownItems.AddRange([settings, load, save, saveAs, close]);
         menu.Items.Add(file);
+        menu.Dock = DockStyle.Top;
 
         form.MainMenuStrip = menu;
         form.Controls.Add(menu);
+        form.Controls.SetChildIndex(menu, 0);
         menu.BringToFront();
-
-        var menuHeight = menu.Height > 0 ? menu.Height : 28;
-        if (form.Padding.Top < menuHeight)
-        {
-            form.Padding = new Padding(form.Padding.Left, menuHeight, form.Padding.Right, form.Padding.Bottom);
-        }
+        form.PerformLayout();
     }
 
     private static void SaveAs(Form form, DataStore store)
