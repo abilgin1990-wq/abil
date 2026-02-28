@@ -106,8 +106,6 @@ public class MainForm : Form
                 detailForm.ShowDialog();
                 Show();
 
-                offer.LastUpdated = DateTime.Now;
-                _store.MarkDirty();
                 RefreshOfferGrid();
             }
             else if (clickedColumn == DeleteColumnName)

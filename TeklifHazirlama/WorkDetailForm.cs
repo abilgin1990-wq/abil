@@ -100,8 +100,6 @@ public class WorkDetailForm : Form
                 form.ShowDialog();
                 Show();
 
-                _offer.LastUpdated = DateTime.Now;
-                _store.MarkDirty();
                 RefreshData();
             }
             else if (clickedColumn == DeleteColumnName)
