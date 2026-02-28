@@ -64,11 +64,12 @@ public class ExcelExportForm : Form
     private void BindData()
     {
         _pageCombo.Items.Clear();
-        _pageCombo.Items.AddRange([
+        _pageCombo.Items.AddRange(new object[]
+        {
             "Teklif Ana Kalemleri Tablosu",
             "Tesisat Grubundaki İş Detayı Listesi",
             "İş Detayı İçindeki Malzeme Listesi"
-        ]);
+        });
 
         if (_pageCombo.Items.Count > 0)
         {
@@ -206,29 +207,29 @@ public class ExcelExportForm : Form
         var group = (_groupCombo.SelectedItem as ComboItem<InstallationGroup>)?.Value;
         var detail = (_detailCombo.SelectedItem as ComboItem<WorkDetail>)?.Value;
 
-        if (offer == null) return [];
+        if (offer == null) return new List<string[]>();
 
         if (pageIndex == 0)
         {
-            var rows = new List<string[]> { ["Tesisat Grubu", "Tutar"] };
+            var rows = new List<string[]> { new[] { "Tesisat Grubu", "Tutar" } };
             rows.AddRange(offer.InstallationGroups.Select(g => new[] { g.Name, g.TotalAmount.ToString("N2") }));
             return rows;
         }
 
-        if (group == null) return [];
+        if (group == null) return new List<string[]>();
 
         if (pageIndex == 1)
         {
-            var rows = new List<string[]> { ["İş Detayı", "Tutar"] };
+            var rows = new List<string[]> { new[] { "İş Detayı", "Tutar" } };
             rows.AddRange(group.WorkDetails.Select(d => new[] { d.Name, d.GrandTotal.ToString("N2") }));
             return rows;
         }
 
-        if (detail == null) return [];
+        if (detail == null) return new List<string[]>();
 
         var materialRows = new List<string[]>
         {
-            ["Malzeme", "Marka", "Adet", "Liste Fiyatı", "PB", "İskonto %", "Birim Fiyat", "İşçilik Birim", "Malzeme Toplam", "İşçilik Toplam", "Genel Toplam"]
+            new[] { "Malzeme", "Marka", "Adet", "Liste Fiyatı", "PB", "İskonto %", "Birim Fiyat", "İşçilik Birim", "Malzeme Toplam", "İşçilik Toplam", "Genel Toplam" }
         };
 
         materialRows.AddRange(detail.Materials.Select(m => new[]
