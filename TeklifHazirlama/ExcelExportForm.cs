@@ -232,8 +232,27 @@ public class ExcelExportForm : Form
 
         if (pageIndex == 0)
         {
-            var rows = new List<string[]> { new[] { "Tesisat Grubu", "Tutar" } };
-            rows.AddRange(offer.InstallationGroups.Select(g => new[] { g.Name, g.TotalAmount.ToString("N2") }));
+            var rows = new List<string[]>
+            {
+                new[] { "Firma Adı", ":", offer.CompanyName, string.Empty },
+                new[] { "Proje Adı", ":", offer.ProjectName, string.Empty },
+                new[] { string.Empty, string.Empty, string.Empty, string.Empty },
+                new[] { "", "Tesisat Grubu", "Tutar", string.Empty }
+            };
+
+            var index = 1;
+            rows.AddRange(offer.InstallationGroups.Select(g =>
+                new[] { index++.ToString(), g.Name, g.TotalAmount.ToString("N2"), string.Empty }));
+
+            var total = offer.TotalAmount;
+            var vat = total * 0.20m;
+            var withVat = total + vat;
+
+            rows.Add(new[] { string.Empty, string.Empty, string.Empty, string.Empty });
+            rows.Add(new[] { string.Empty, "Toplam Tutar", total.ToString("N2"), string.Empty });
+            rows.Add(new[] { string.Empty, "K.D.V %20 Tutar", vat.ToString("N2"), string.Empty });
+            rows.Add(new[] { string.Empty, "K.D.V Dahil Genel Toplam", withVat.ToString("N2"), string.Empty });
+
             return rows;
         }
 
