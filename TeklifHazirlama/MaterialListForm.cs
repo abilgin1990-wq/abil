@@ -265,8 +265,7 @@ public class MaterialListForm : Form
     {
         var materialFilter = _materialText.Text.Trim();
 
-        var materials = _store.State.Settings.MaterialCatalog
-            .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name)
+        var materials = GetCatalogScope()
             .Select(m => m.MaterialName)
             .Where(name => string.IsNullOrWhiteSpace(materialFilter) || name.Contains(materialFilter, StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -281,8 +280,7 @@ public class MaterialListForm : Form
         var materialFilter = _materialText.Text.Trim();
         var brandFilter = _brandText.Text.Trim();
 
-        var brands = _store.State.Settings.MaterialCatalog
-            .Where(m => m.InstallationGroupName == _group.Name && m.WorkDetailName == _detail.Name)
+        var brands = GetCatalogScope()
             .Where(m => string.IsNullOrWhiteSpace(materialFilter) || m.MaterialName.Contains(materialFilter, StringComparison.OrdinalIgnoreCase))
             .Select(m => m.Brand)
             .Where(brand => string.IsNullOrWhiteSpace(brandFilter) || brand.Contains(brandFilter, StringComparison.OrdinalIgnoreCase))
@@ -304,6 +302,11 @@ public class MaterialListForm : Form
         listBox.EndUpdate();
         listBox.Visible = show && listBox.Items.Count > 0;
     }
+
+    private IEnumerable<MaterialCatalogItem> GetCatalogScope()
+        => _store.State.Settings.MaterialCatalog.Where(m =>
+            string.Equals(m.InstallationGroupName, _group.Name, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(m.WorkDetailName, _detail.Name, StringComparison.OrdinalIgnoreCase));
 
     private void HandleSuggestionKeyDown(KeyEventArgs e, ListBox listBox, TextBox targetTextBox, Action<string> apply)
     {
@@ -425,9 +428,7 @@ public class MaterialListForm : Form
             return;
         }
 
-        var item = _store.State.Settings.MaterialCatalog.FirstOrDefault(m =>
-            m.InstallationGroupName == _group.Name &&
-            m.WorkDetailName == _detail.Name &&
+        var item = GetCatalogScope().FirstOrDefault(m =>
             string.Equals(m.MaterialName, materialName, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(m.Brand, brand, StringComparison.OrdinalIgnoreCase));
 
