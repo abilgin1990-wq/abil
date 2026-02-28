@@ -4,6 +4,7 @@ public class MaterialListForm : Form
 {
     private const string UpdateMaterialColumnName = "UpdateMaterialColumn";
     private const string DeleteMaterialColumnName = "DeleteMaterialColumn";
+    private const string EditMaterialColumnName = "EditMaterialColumn";
 
     private readonly DataStore _store;
     private readonly Offer _offer;
@@ -127,6 +128,7 @@ public class MaterialListForm : Form
         _materialsGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Genel Toplam", DataPropertyName = nameof(MaterialSelection.GrandTotal), Width = 120, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = UpdateMaterialColumnName, HeaderText = "Güncelle", Text = "Güncelle", UseColumnTextForButtonValue = false, Width = 110, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
         _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteMaterialColumnName, HeaderText = "Sil", Text = "Malzemeyi Sil", UseColumnTextForButtonValue = true, Width = 110, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
+        _materialsGrid.Columns.Add(new DataGridViewButtonColumn { Name = EditMaterialColumnName, HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 110, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
 
         _materialsGrid.CellContentClick += (_, e) =>
         {
@@ -144,6 +146,16 @@ public class MaterialListForm : Form
                     return;
                 }
 
+                _offer.LastUpdated = DateTime.Now;
+                _store.MarkDirty();
+                RefreshData();
+            }
+            else if (clickedColumn == EditMaterialColumnName)
+            {
+                using var editForm = new MaterialSelectionEditForm(material);
+                if (editForm.ShowDialog() != DialogResult.OK) return;
+
+                ApplyEditedMaterial(material, editForm.EditedSelection);
                 _offer.LastUpdated = DateTime.Now;
                 _store.MarkDirty();
                 RefreshData();
@@ -305,6 +317,28 @@ public class MaterialListForm : Form
         }
     }
 
+
+    private void ApplyEditedMaterial(MaterialSelection target, MaterialSelection edited)
+    {
+        var rate = edited.Currency switch
+        {
+            "USD" => _store.State.Settings.DollarRate,
+            "EUR" => _store.State.Settings.EuroRate,
+            _ => 1m
+        };
+
+        target.MaterialName = edited.MaterialName;
+        target.Brand = edited.Brand;
+        target.Quantity = edited.Quantity;
+        target.OriginalListPrice = edited.OriginalListPrice;
+        target.Currency = edited.Currency;
+        target.DiscountPercent = edited.DiscountPercent;
+        target.LaborUnitPrice = edited.LaborUnitPrice;
+        target.ListPrice = edited.OriginalListPrice * rate;
+        target.UnitPrice = edited.OriginalListPrice * (1 - edited.DiscountPercent / 100m) * rate;
+        target.IsCatalogOutdated = false;
+        target.IsManualOverride = true;
+    }
     private bool TryUpdateMaterialFromCatalog(MaterialSelection material)
     {
         var item = _store.State.Settings.MaterialCatalog.FirstOrDefault(x => x.Id == material.MaterialCatalogItemId);
@@ -332,6 +366,7 @@ public class MaterialListForm : Form
         target.UnitPrice = item.UnitPrice * rate;
         target.LaborUnitPrice = item.LaborUnitPrice;
         target.IsCatalogOutdated = false;
+        target.IsManualOverride = false;
     }
 
     private void AddMaterial()
@@ -375,7 +410,8 @@ public class MaterialListForm : Form
         var target = new MaterialSelection
         {
             MaterialCatalogItemId = item.Id,
-            Quantity = quantity
+            Quantity = quantity,
+            IsManualOverride = false
         };
 
         ApplyCatalogItem(target, item);

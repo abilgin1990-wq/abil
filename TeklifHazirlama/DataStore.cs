@@ -43,6 +43,11 @@ public class DataStore
 
     private bool IsMaterialOutdated(MaterialSelection material)
     {
+        if (material.IsManualOverride)
+        {
+            return false;
+        }
+
         var catalogItem = State.Settings.MaterialCatalog.FirstOrDefault(item => item.Id == material.MaterialCatalogItemId);
         if (catalogItem == null)
         {
