@@ -2,6 +2,7 @@ namespace TeklifHazirlama;
 
 public class MainForm : Form
 {
+    private const string EditColumnName = "EditColumn";
     private const string DetailColumnName = "DetailColumn";
     private const string DeleteColumnName = "DeleteColumn";
 
@@ -84,6 +85,7 @@ public class MainForm : Form
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Proje", DataPropertyName = nameof(Offer.ProjectName), Width = 200 });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Toplam Tutar", DataPropertyName = nameof(Offer.TotalWithVat), Width = 140, DefaultCellStyle = new DataGridViewCellStyle { Format = "N2" } });
         _offersGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Son Güncelleme", DataPropertyName = nameof(Offer.LastUpdated), Width = 170, DefaultCellStyle = new DataGridViewCellStyle { Format = "g" } });
+        _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = EditColumnName, HeaderText = "Düzenle", Text = "Düzenle", UseColumnTextForButtonValue = true, Width = 120, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
         _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DetailColumnName, HeaderText = "Detay", Text = "Teklif Detayını Gör", UseColumnTextForButtonValue = true, Width = 140, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
         _offersGrid.Columns.Add(new DataGridViewButtonColumn { Name = DeleteColumnName, HeaderText = "Sil", Text = "Teklifi Sil", UseColumnTextForButtonValue = true, Width = 120, FlatStyle = FlatStyle.Flat, DefaultCellStyle = new DataGridViewCellStyle { BackColor = ButtonStyler.PrimaryBlue, ForeColor = Color.White, SelectionBackColor = ButtonStyler.PrimaryBlue, SelectionForeColor = Color.White } });
 
@@ -108,6 +110,10 @@ public class MainForm : Form
 
                 RefreshOfferGrid();
             }
+            else if (clickedColumn == EditColumnName)
+            {
+                EditOffer(offer);
+            }
             else if (clickedColumn == DeleteColumnName)
             {
                 var confirm = MessageBox.Show($"Firma: {offer.CompanyName}\nProje: {offer.ProjectName}\n\nBu teklifi silmek istediğinize emin misiniz?", "Teklif Sil", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -125,6 +131,32 @@ public class MainForm : Form
         _offersGrid.EnableHeadersVisualStyles = false;
         _offersGrid.ColumnHeadersDefaultCellStyle.Font = new Font(_offersGrid.Font, FontStyle.Bold);
         _offersGrid.DataSource = _offersBindingSource;
+    }
+
+    private void EditOffer(Offer offer)
+    {
+        var newCompanyName = Prompt.Show("Firma Adı", offer.CompanyName);
+        if (string.IsNullOrWhiteSpace(newCompanyName)) return;
+
+        var newProjectName = Prompt.Show("Proje Adı", offer.ProjectName);
+        if (string.IsNullOrWhiteSpace(newProjectName)) return;
+
+        var isDuplicate = _store.State.Offers.Any(o =>
+            o.Id != offer.Id
+            && string.Equals(o.CompanyName, newCompanyName, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(o.ProjectName, newProjectName, StringComparison.OrdinalIgnoreCase));
+
+        if (isDuplicate)
+        {
+            MessageBox.Show("Aynı firma adı ve proje ismi ile teklif zaten mevcut.");
+            return;
+        }
+
+        offer.CompanyName = newCompanyName;
+        offer.ProjectName = newProjectName;
+        offer.LastUpdated = DateTime.Now;
+        _store.MarkDirty();
+        RefreshOfferGrid();
     }
 
     private void AddOffer()
