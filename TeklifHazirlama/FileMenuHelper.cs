@@ -62,6 +62,12 @@ public static class FileMenuHelper
         form.MainMenuStrip = menu;
         form.Controls.Add(menu);
         menu.BringToFront();
+
+        var menuHeight = menu.Height > 0 ? menu.Height : 28;
+        if (form.Padding.Top < menuHeight)
+        {
+            form.Padding = new Padding(form.Padding.Left, menuHeight, form.Padding.Right, form.Padding.Bottom);
+        }
     }
 
     private static void SaveAs(Form form, DataStore store)
