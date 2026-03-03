@@ -5,36 +5,24 @@ namespace ConstructionTracker;
 public class EditAttendanceForm : Form
 {
     private readonly AttendanceRecord _record;
-    private readonly List<AttendanceRecord> _otherRecords;
-
     private readonly DateTimePicker _datePicker = new();
     private readonly TextBox _workerCountTextBox = new();
     private readonly ComboBox _workTypeCombo = new();
 
-    public EditAttendanceForm(AttendanceRecord record, List<AttendanceRecord> otherRecords)
+    public EditAttendanceForm(AttendanceRecord record)
     {
         _record = record;
-        _otherRecords = otherRecords;
-
         Text = "Puantaj Düzenle";
         Width = 420;
         Height = 240;
         StartPosition = FormStartPosition.CenterParent;
-
         InitializeLayout();
         FillData();
     }
 
     private void InitializeLayout()
     {
-        var layout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(12),
-            ColumnCount = 2,
-            RowCount = 4
-        };
-
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 2, RowCount = 4 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
@@ -50,18 +38,13 @@ public class EditAttendanceForm : Form
         _workTypeCombo.DataSource = Enum.GetValues(typeof(WorkType));
         layout.Controls.Add(_workTypeCombo, 1, 2);
 
-        var buttonPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
-        var saveButton = new Button { Text = "Kaydet", AutoSize = true };
-        saveButton.Click += SaveClick;
-        var cancelButton = new Button { Text = "İptal", AutoSize = true };
-        cancelButton.Click += (_, _) => DialogResult = DialogResult.Cancel;
-
-        buttonPanel.Controls.Add(saveButton);
-        buttonPanel.Controls.Add(cancelButton);
-
-        layout.Controls.Add(buttonPanel, 0, 3);
-        layout.SetColumnSpan(buttonPanel, 2);
-
+        var btns = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
+        var save = new Button { Text = "Kaydet", AutoSize = true };
+        save.Click += SaveClick;
+        var cancel = new Button { Text = "İptal", AutoSize = true };
+        cancel.Click += (_, _) => DialogResult = DialogResult.Cancel;
+        btns.Controls.Add(save); btns.Controls.Add(cancel);
+        layout.Controls.Add(btns, 0, 3); layout.SetColumnSpan(btns, 2);
         Controls.Add(layout);
     }
 
@@ -74,23 +57,10 @@ public class EditAttendanceForm : Form
 
     private void SaveClick(object? sender, EventArgs e)
     {
-        if (!int.TryParse(_workerCountTextBox.Text.Trim(), out var workerCount) || workerCount <= 0)
-        {
-            MessageBox.Show("Geçerli bir çalışan sayısı girin.");
-            return;
-        }
-
-        var selectedDate = _datePicker.Value.Date;
-        if (_otherRecords.Any(x => x.Date.Date == selectedDate))
-        {
-            MessageBox.Show("Aynı güne birden fazla çalışma eklenemez.");
-            return;
-        }
-
-        _record.Date = selectedDate;
-        _record.WorkerCount = workerCount;
+        if (!int.TryParse(_workerCountTextBox.Text.Trim(), out var wc) || wc <= 0) { MessageBox.Show("Geçerli bir çalışan sayısı girin."); return; }
+        _record.Date = _datePicker.Value.Date;
+        _record.WorkerCount = wc;
         _record.WorkType = (WorkType)_workTypeCombo.SelectedItem!;
-
         DialogResult = DialogResult.OK;
     }
 }
